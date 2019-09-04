@@ -6,11 +6,18 @@ from aienvs.Sumo.LDM import ldm
 from aienvs.Sumo.SumoHelper import SumoHelper
 from aienvs.Sumo.state_representation import *
 import time
+import os, sys
+if 'SUMO_HOME' in os.environ:
+    tools = os.path.join(os.environ['SUMO_HOME'], 'tools')
+    sys.path.append(tools)
+else:   
+    sys.exit("please declare environment variable 'SUMO_HOME'")
 from sumolib import checkBinary
 import random
 from aienvs.Sumo.SumoHelper import SumoHelper
 from aienvs.Environment import Env
 import copy
+import time
 from aienvs.Sumo.TrafficLightPhases import TrafficLightPhases
 
 
@@ -75,10 +82,29 @@ class SumoGymAdapter(Env):
         obs = self._observe()
         done = self.ldm.isSimulationFinished()
         global_reward = self._computeGlobalReward()
+        self.action_switches(actions)
+        actual_reward = self.actual_global_reward(global_reward)       
 
         # as in openai gym, last one is the info list
-        return obs, global_reward, done, []
-    
+        return obs, actual_reward, done, []
+
+    def actual_global_reward(self, global_reward):
+        global_reward['result'] += -0.1*self._action_switches['0']
+        return global_reward
+
+    def action_switches(self, actions:spaces.Dict):
+        self._action_switches = {}
+        for intersectionId in actions.keys():
+            if len(self._takenActions[intersectionId])==1:
+                self._action_switches[intersectionId] = 0    
+            else:
+                prev_action = self._takenActions[intersectionId][-1]
+                if prev_action != self._intToPhaseString(intersectionId, actions.get(intersectionId)):          
+                    self._action_switches[intersectionId] = 1
+                else:
+                    self._action_switches[intersectionId] = 0    
+        return self._action_switches
+
     def reset(self):
         try:
             logging.debug("LDM closed by resetting")
@@ -89,7 +115,7 @@ class SumoGymAdapter(Env):
         logging.info("Starting SUMO environment...")
         self._startSUMO()
         # TODO: Wouter: make state configurable ("state factory")
-        self._state = LdmMatrixState(self.ldm, [self._parameters['box_bottom_corner'], self._parameters['box_top_corner']], "byCorners")
+        self._state = LdmMatrixState(self.ldm, [self._parameters['box_bottom_corner'], self._parameters['box_top_corner']], self._parameters["type"])
 
         return self._observe()
         
@@ -112,7 +138,7 @@ class SumoGymAdapter(Env):
         time.sleep(delay)
     
     def seed(self, seed):
-        self._seed = seed
+        self._seed = int(time.time())
 
     def close(self):
         self.__del__()
@@ -190,7 +216,7 @@ class SumoGymAdapter(Env):
         """
         Computes the global reward
         """
-        return self._state.update_reward() / self._parameters['scaling_factor']
+        return self._state.update_reward()
     
     def _getActionSpace(self):
         """

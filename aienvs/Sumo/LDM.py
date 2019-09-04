@@ -56,6 +56,7 @@ class ldm():
         self._waitingPenalty = waitingPenalty
         self.new_reward = new_reward
         self.subscribedVehs=[]
+        self.prev_speed={}
 
     def start(self, sumoCmd:list, PORT:9001):
         """
@@ -67,7 +68,6 @@ class ldm():
            self.SUMO_client.start(sumoCmd, port=PORT)
         else:
             self.SUMO_client.start(sumoCmd)
-
         
         
     def step(self):
@@ -340,10 +340,16 @@ class ldm():
 
     # vehicles are a subset of all subscription results
     def _computeReward( self, vehicles ):
-        result = 0
+        total_result = {}
+        total_result['result'] = 0.
+        total_result['total_delay'] = 0.
+        total_result['total_waiting'] = 0.
+        total_result['num_teleports'] = 0.
+        total_result['emergency_stops'] = 0.
+
         if not vehicles:
             logging.debug("No vehicles, returning 0 reward")
-            return 0
+            return total_result
 
         for vehID in vehicles:
             if self.new_reward:
@@ -355,6 +361,11 @@ class ldm():
                 speed = vehicles.get(vehID).get(self.SUMO_client.constants.VAR_SPEED)
                 allowedSpeed = vehicles.get(vehID).get(self.SUMO_client.constants.VAR_ALLOWED_SPEED)
 
+                try:
+                    previous_speed = self.prev_speed[vehID]
+                except KeyError:
+                    previous_speed = 0.
+
                 if( self._verbose ):
                     if self._waitingPenalty:
                         print(vehID + " waitingTime " + str(waitingTime) + " speed " + str(speed) + " allowedSpeed " + str(allowedSpeed))
@@ -363,8 +374,19 @@ class ldm():
 
                 if self._waitingPenalty:
                     clippedWaitingTime = min(waitingTime, 1.0) #min(waitingTime*0.5, 1.0)
-                    clippedDelay = max(0, 1 - speed/allowedSpeed)
-                    reward = - 0.5*clippedDelay - 0.5*clippedWaitingTime
+
+                    delay = speed/allowedSpeed
+                    normalised_delay = 1 - speed/allowedSpeed
+                    clippedDelay = max(0, normalised_delay)
+
+                    accln = speed - previous_speed
+
+                    if accln<-4.5:
+                        total_result['emergency_stops'] +=1
+                    
+                    self.prev_speed[vehID] = speed 
+                    reward = - 0.3*clippedDelay - 0.3*clippedWaitingTime
+                      
                 else:
                     clippedDelay = max(0, 1 - speed / allowedSpeed)
                     reward = -clippedDelay
@@ -375,8 +397,16 @@ class ldm():
                     else:
                         print(vehID + " clippedDelay " + str(clippedDelay) + " reward " + str(reward))
 
-            result += reward
-        return result
+            total_result['result'] += reward
+            total_result['total_waiting'] += waitingTime
+            total_result['total_delay'] += delay
+
+        num_teleports = self.getStartingTeleportNumber()
+        
+        total_result['result'] += -0.1*num_teleports -0.2*total_result['emergency_stops']
+        
+        total_result['num_teleports'] += num_teleports
+        return total_result
 
     def _getVehiclePositions( self, subscriptionResults ):
         resultsFormatted=list(subscriptionResults.values())

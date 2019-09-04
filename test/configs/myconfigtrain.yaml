@@ -1,0 +1,55 @@
+parameters:
+    
+    skip_frames: 1
+    box_bottom_corner: [330,360]  # still needs to be set for cross_network= done
+    box_top_corner: [690, 660]  # stil needs to be set for cross_network= done.
+
+    y_t: 0 # yellow light traffic time
+
+    resolutionInPixelsPerMeterX: 0.3
+    resolutionInPixelsPerMeterY: 0.3
+
+    scaling_factor: 1 # Used to scale the rewards, but for now set to 1.
+
+    local_rewards: True
+    waiting_penalty: True
+    new_reward: False
+
+# Either of the new_reward or waiting_penalty can be set True and not both.
+
+    lightPositions: {"0": [[517.45,511.61], [511.5,502.5], [502.5,508.3], [508.4,517.4]]} # Need to know how to get the traffic light positions.
+
+    libsumo: False # Need to know what happens if I set it to False, since inside the 
+                   # sumogymadapter which initialises the ldm which in turn chooses between libsumo or traci.
+
+    seed: 56 # somehow need to change seed for every episode so that new traffic routes are
+             # generated each time we run an episode.
+
+    generate_conf: True # it is used inside the sumohelper.py It is used to generate the sumoconfig file from the nodes, edges etc.
+
+    tlphasesfile: 'cross.net.xml'
+    route_starts: []
+    route_ends: []
+    route_max_segments: 1
+    route_min_segments: 1
+    route_segments: ['51o 1i 2o 52i', '54o 4i 3o 53i', '52o 2i 1o 51i', '53o 3i 4o 54i']
+
+# For now only add array of segments that will define the route of your vehicle.
+# These are used inside sumphlper.py's generate_randomized_route() function in order to 
+# generate routes.
+
+    car_pr: 0.2
+    car_tm: 500
+
+# These are used to generate vehicle for each possible route in the scenario and writes
+# them to a file and returns the location of the sumocfg file.
+
+    scene: 'cross_network' 
+
+# This is used to define the directory where we save the file for route and configuration.
+# Its inside the scenario directory.
+
+    gui: True
+    type: 'byCorners'
+    speed_dev: 0.0
+    verbose: 0
