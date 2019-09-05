@@ -1,6 +1,9 @@
 import os
 import logging
 from aienvs.FactoryFloor.FactoryFloor import FactoryFloor
+from aienvs.gym.PackedSpace import PackedSpace
+from aienvs.gym.DecoratedSpace import DictSpaceDecorator
+from aienvs.gym.ModifiedGymEnv import ModifiedGymEnv
 from aiagents.AgentFactory import createAgent
 import random
 from aienvs.runners.Experiment import Experiment
@@ -30,7 +33,7 @@ def main():
         print("Default config ")
         env_configName = "./configs/factory_floor_experiment.yaml"
         env_filename = os.path.join(dirname, env_configName)
-        agent_configName = "./configs/agent_config.yaml"
+        agent_configName = "./configs/agent_combined_config.yaml"
         agent_filename = os.path.join(dirname, agent_configName)
 
     env_parameters = getParameters(env_filename)
@@ -41,7 +44,9 @@ def main():
 
     random.seed(env_parameters['seed'])
     maxSteps=env_parameters['max_steps']
-    env = FactoryFloor(env_parameters['environment'])
+    baseEnv = FactoryFloor(env_parameters['environment'])
+    packedActionSpace = PackedSpace( baseEnv.action_space, {"robots":["robot1", "robot2", "robot3"]} )
+    env = ModifiedGymEnv(baseEnv, packedActionSpace)
 
     logging.info("Starting example MCTS agent")
     logoutput = io.StringIO("episode output log")

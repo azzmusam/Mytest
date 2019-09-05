@@ -2,7 +2,7 @@ import sys
 import os
 import unittest
 import aienvs
-from aiagents.multi.ComplexAgentComponent import ComplexAgentComponent
+from aiagents.multi.BasicComplexAgent import BasicComplexAgent
 from aiagents.single.RandomAgent import RandomAgent
 from aiagents.single.PPO.PPOAgent import PPOAgent
 import logging
@@ -70,10 +70,9 @@ class testSumoGymAdapter(LoggedTestCase):
         for intersectionId in env.action_space.spaces.keys():
             randomAgents.append(RandomAgent(intersectionId, env))
 
-        complexAgent = ComplexAgentComponent(randomAgents)
+        complexAgent = BasicComplexAgent(randomAgents)
         experiment = Experiment(complexAgent, env, parameters['max_steps'])
         experiment.run()
-        
 
     def test_PPO_agent(self):
         logging.info("Starting test_PPO_agent")
@@ -93,9 +92,10 @@ class testSumoGymAdapter(LoggedTestCase):
         for intersectionId in env.action_space.spaces.keys():
             PPOAgents.append(PPOAgent(intersectionId, env, parameters))
 
-        complexAgent = ComplexAgentComponent(PPOAgents)
+        complexAgent = BasicComplexAgent(PPOAgents)
         experiment = Experiment(complexAgent, env, parameters['max_steps'])
         experiment.run()
+
         
 if __name__ == '__main__':
     unittest.main()

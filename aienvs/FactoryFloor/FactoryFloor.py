@@ -24,9 +24,11 @@ class FactoryFloor(Env):
     """
     The factory floor environment. This adds all dynamic aspects of the Map:
     the robots and the tasks.
+    
+    It is assumed that the factory floor itself (the layout) is immutable.
     """
     DEFAULT_PARAMETERS = {'steps':1000,
-                'robots':[ [3, 4], 'random'],  # initial robot positions
+                'robots':[ {'id': "robot1", 'pos':[3, 4]}, {'id': "robot2", 'pos': 'random'}],  # initial robot positions
                 'tasks': [ [1, 1] ],  # initial task positions
                 'P_action_succeed':{'LEFT':0.9, 'RIGHT':0.9, 'ACT':0.5, 'UP':0.9, 'DOWN':0.9},
                 'P_task_appears':0.99,  # P(new task appears in step) 
@@ -65,33 +67,48 @@ class FactoryFloor(Env):
         robots = []
         tasks = []
         self._state = FactoryFloorState(robots, tasks)
-        for pos in self._parameters['robots']:
+
+        # TODO: remove code duplication
+        for item in self._parameters['robots']:
+            pos = item['pos']
+            robotId = item['id']
             if isinstance(pos, list):
                 if len(pos) != 2:
                     raise ValueError("position vector must be length 2 but got " + str(pos))
-                robot = FactoryFloorRobot(array(pos))
+                robot = FactoryFloorRobot(robotId, array(pos))
             elif pos == 'random':
-                robot = FactoryFloorRobot(self._getFreeMapPosition())
+                robot = FactoryFloorRobot(robotId, self._getFreeMapPosition())
             else:
                 raise ValueError("Unknown robot position, expected list but got " + str(type(pos)))
             self._state.addRobot(robot)
         for pos in self._parameters['tasks']:
-            self._state.addTask(FactoryFloorTask(array(pos)))
+            if isinstance(pos, list):
+                if len(pos) != 2:
+                    raise ValueError("position vector must be length 2 but got " + str(pos))
+                task = FactoryFloorTask(array(pos))
+            elif pos == 'random':
+                task = FactoryFloorTask(self._getFreeMapPosition())
+            else:
+                raise ValueError("Unknown task position, expected list but got " + str(type(pos)))
+            self._state.addTask(task)
+                
     
         if not USE_PossibleActionsSpace:
             self._actSpace = spaces.Dict({robot.getId():spaces.Discrete(len(self.ACTIONS)) for robot in self._state.robots})
             seed = self._random.randint(0, 10 * len(self._state.robots))
             self._actSpace.seed(seed)
 
-    def step(self, actions:spaces.Dict):
+    # Override
+    def step(self, actions:dict):
         if self._random.random() < self._map.getTaskProbability():
             self._addTask()
 
+        global_reward = self._computePenalty()
         if(actions):
             for robot in self._state.robots:
                 self._applyAction(robot, actions[robot.getId()])
+        global_reward -= self._computePenalty()
 
-        global_reward = -self._computePenalty()
         self._state.step += 1
         done = (self._parameters['steps'] <= self._state.step)
 
@@ -99,8 +116,8 @@ class FactoryFloor(Env):
         return obs, global_reward, done, []
     
     def reset(self):
-        self._state.step = 0
-        return copy.deepcopy(self._state) # should return initial observation
+        self.__init__(self._parameters)
+        return copy.deepcopy(self._state)  # should return initial observation
         
     def render(self, delay=0.0, overlay=False):
         if overlay:
@@ -121,7 +138,7 @@ class FactoryFloor(Env):
         time.sleep(delay)
 
     def close(self):
-        pass  # todo
+        pass  
 
     def seed(self, seed):
         self._parameters['seed'] = seed
@@ -168,7 +185,8 @@ class FactoryFloor(Env):
         parameters = copy.deepcopy(self._parameters)
         newmap = self._map.getPart(area)
         parameters['map'] = newmap.getFullMap()
-        parameters['robots'] = [robot.getPosition().tolist() \
+        parameters['robots'] = [\
+            { 'id':robot.getId(), 'pos':robot.getPosition().tolist() }\
             for robot in self._state.robots if self._map.isInside(robot.getPosition())]
         parameters['tasks'] = [task.getPosition().tolist() \
             for task in self._state.tasks if self._map.isInside(task.getPosition())]

@@ -11,6 +11,7 @@ from aienvs.loggers.PickleLogger import PickleLogger
 import copy
 import sys
 import pickle
+from shutil import copyfile
 
 logger = logging.getLogger()
 logger.setLevel(logging.ERROR)
@@ -18,20 +19,29 @@ logger.setLevel(logging.ERROR)
 
 def main():
     """
-    Demo how to run an agent
+    MCTS Factory Floor experiment
     """
     dirname = os.path.dirname(__file__)
 
     if(len(sys.argv) > 1):
-        env_configName = str(sys.argv[1])
-        agent_configName = str(sys.argv[2])
-
+        env_filename = str(sys.argv[1])
+        agent_filename = str(sys.argv[2])
+        data_dirname = str(sys.argv[3])
     else:
         print("Default config ")
-        env_configName = "./configs/factory_floor_experiment.yaml"
+        env_configName = "./debug_configs/factory_floor_experiment.yaml"
         env_filename = os.path.join(dirname, env_configName)
-        agent_configName = "./configs/agent_config.yaml"
+        agent_configName = "./debug_configs/agent_config.yaml"
         agent_filename = os.path.join(dirname, agent_configName)
+        data_dirname = "data"
+
+    try:
+        data_outputdir = os.path.join(dirname, "./"+ data_dirname + "/"+os.environ["SLURM_JOB_ID"])
+        logoutputpickle = open('./' + data_outputdir +'/output.pickle', 'wb')
+    except KeyError:
+        print("No SLURM_JOB_ID found")
+        logoutputpickle = io.BytesIO()
+
 
     env_parameters = getParameters(env_filename)
     agent_parameters = getParameters(agent_filename)
@@ -46,23 +56,16 @@ def main():
     logging.info("Starting example MCTS agent")
     logoutput = io.StringIO("episode output log")
 
-    try:
-        logoutputpickle = open('./'+os.environ["SLURM_JOB_ID"] +'.pickle', 'wb')
-    except KeyError:
-        print("No SLURM_JOB_ID found")
-        logoutputpickle = io.BytesIO()
-
     obs = env.reset()
     complexAgent = createAgent(env, agent_parameters)
 
-    experiment = Experiment(complexAgent, env, maxSteps, render=True)
+    experiment = Experiment(complexAgent, env, maxSteps, render=False)
     experiment.addListener(JsonLogger(logoutput))
     experiment.addListener(PickleLogger(logoutputpickle))
     stats, confidence_ints = experiment.run()
     logoutputpickle.close()
 
     print("json output:", logoutput.getvalue())
-
     print("\n\nREWARD STATS: " + str(stats) + " \nCONFIDENCE INTERVALS " + str(confidence_ints))
 
  #   instream = open('./file3', 'rb')

@@ -6,9 +6,9 @@ from test.LoggedTestCase import LoggedTestCase
 from aienvs.FactoryFloor.FactoryFloor import FactoryFloor
 from aiagents.single.PPO.PPOAgent import PPOAgent
 from aiagents.single.RandomAgent import RandomAgent
-from aiagents.single.mcts.mctsAgent import MctsAgent
+from aiagents.single.mcts.MctsAgent import MctsAgent
 from aiagents.AgentComponent import AgentComponent
-from aiagents.multi.ComplexAgentComponent import ComplexAgentComponent
+from aiagents.multi.BasicComplexAgent import BasicComplexAgent
 import random
 import yaml
 from numpy import array
@@ -82,10 +82,14 @@ class testFactoryFloor(LoggedTestCase):
         obs = env.reset()
 
         mctsAgents = []
-        for robotId in env.action_space.spaces.keys():
-            mctsAgents.append(MctsAgent(agentId=robotId, environment=env, parameters={}))
 
-        complexAgent = ComplexAgentComponent(mctsAgents)
+        randomagent = 'aiagents.single.RandomAgent.RandomAgent'
+        for robotId in env.action_space.spaces.keys():
+            params = {'treeAgent':{'class': randomagent, 'id':robotId, 'parameters':{} },
+                      'rolloutAgent':{'class': randomagent, 'id':robotId, 'parameters':{} }} 
+            mctsAgents.append(MctsAgent(agentId=robotId, environment=env, parameters=params))
+
+        complexAgent = BasicComplexAgent(mctsAgents)
 
         episode = Episode(complexAgent, env, obs, render=True)
         episode.run()
@@ -93,7 +97,7 @@ class testFactoryFloor(LoggedTestCase):
     def test_random_agent(self):
         logging.info("Starting test random agent")
         dirname = os.path.dirname(__file__)
-        filename = os.path.join(dirname, "../configs/factory_floor.yaml")
+        filename = os.path.join(dirname, "../configs/factory_floor_simple.yaml")
         parameters = getParameters(filename)
 
         env = FactoryFloor(parameters)
@@ -101,7 +105,7 @@ class testFactoryFloor(LoggedTestCase):
         for robotId in env.action_space.spaces.keys():
             randomAgents.append(RandomAgent(robotId, env))
 
-        complexAgent = ComplexAgentComponent(randomAgents)
+        complexAgent = BasicComplexAgent(randomAgents)
         steps = 0
 
         Experiment(complexAgent, env, 1000, None, True).run()
@@ -109,7 +113,7 @@ class testFactoryFloor(LoggedTestCase):
     def est_PPO_agent(self):
         logging.info("Starting test PPO agent")
         dirname = os.path.dirname(__file__)
-        filename = os.path.join(dirname, "../configs/factory_floor.yaml")
+        filename = os.path.join(dirname, "../configs/factory_floor_simple.yaml")
         parameters = getParameters(filename)
 
         env = FactoryFloor(parameters)
@@ -117,7 +121,7 @@ class testFactoryFloor(LoggedTestCase):
         for robotId in env.action_space.spaces.keys():
             PPOAgents.append(PPOAgent(parameters, env.observation_space, env.action_space.spaces.get(robotId), robotId))
 
-        complexAgent = ComplexAgentComponent(PPOAgents)
+        complexAgent = BasicComplexAgent(PPOAgents)
         steps = 0
 
         while steps < parameters["max_steps"]:
