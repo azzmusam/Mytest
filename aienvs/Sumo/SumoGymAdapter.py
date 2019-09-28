@@ -19,6 +19,7 @@ from aienvs.Environment import Env
 import copy
 import time
 from aienvs.Sumo.TrafficLightPhases import TrafficLightPhases
+from statics_control import *
 
 
 class SumoGymAdapter(Env):
@@ -75,6 +76,7 @@ class SumoGymAdapter(Env):
         self._chosen_action = None
         self.seed(42)  # in case no seed is given
         self._action_space = self._getActionSpace()
+        self.stats_control = Control()
     
     def step(self, actions:dict):
         self._set_lights(actions)
@@ -82,13 +84,13 @@ class SumoGymAdapter(Env):
         obs = self._observe()
         done = self.ldm.isSimulationFinished()
         global_reward = self._computeGlobalReward()
-        self.action_switches(actions)
-        actual_reward = self.actual_global_reward(global_reward)       
+        '''self.action_switches(actions)
+        actual_reward = self.actual_global_reward(global_reward)'''       
 
         # as in openai gym, last one is the info list
-        return obs, actual_reward, done, []
+        return obs, global_reward, done, []
 
-    def actual_global_reward(self, global_reward):
+    '''def actual_global_reward(self, global_reward):
         global_reward['result'] += -0.1*self._action_switches['0']
         return global_reward
 
@@ -103,21 +105,31 @@ class SumoGymAdapter(Env):
                     self._action_switches[intersectionId] = 1
                 else:
                     self._action_switches[intersectionId] = 0    
-        return self._action_switches
+        return self._action_switches'''
 
-    def reset(self):
+    def reset(self, episode=None):
         try:
             logging.debug("LDM closed by resetting")
             self.ldm.close()
         except:
             logging.debug("No LDM to close. Perhaps it's the first instance of training")
 
-        logging.info("Starting SUMO environment...")
-        self._startSUMO()
-        # TODO: Wouter: make state configurable ("state factory")
-        self._state = LdmMatrixState(self.ldm, [self._parameters['box_bottom_corner'], self._parameters['box_top_corner']], self._parameters["type"])
+        if episode!=None:
+            average_travel_times, average_travel_time = self.stats_control.log()
+            logging.info("Starting SUMO environment...")
+            self._startSUMO()
+            # TODO: Wouter: make state configurable ("state factory")
+            self._state = LdmMatrixState(self.ldm, [self._parameters['box_bottom_corner'], self._parameters['box_top_corner']], self._parameters["type"])
 
-        return self._observe()
+            return self._observe(), average_travel_times, average_travel_time
+
+        else:
+            logging.info("Starting SUMO environment...")
+            self._startSUMO()
+            # TODO: Wouter: make state configurable ("state factory")
+            self._state = LdmMatrixState(self.ldm, [self._parameters['box_bottom_corner'], self._parameters['box_top_corner']], self._parameters["type"])
+
+            return self._observe()
         
         # TODO: change the defaults to something sensible
     def render(self, delay=0.0):
@@ -138,6 +150,7 @@ class SumoGymAdapter(Env):
         time.sleep(delay)
     
     def seed(self, seed):
+        random.seed(seed)
         self._seed = int(time.time())
 
     def close(self):
@@ -166,16 +179,19 @@ class SumoGymAdapter(Env):
         val = 'sumo-gui' if self._parameters['gui'] else 'sumo'
         maxRetries = self._parameters['maxConnectRetries']
         sumo_binary = checkBinary(val)
+        self.dirname = os.path.dirname(__file__)
+        self.out = os.path.join(self.dirname, "../../test/Stats", "tripinfo.xml")
 
         # Try repeatedly to connect
         while True:
             try:
                 # this cannot be seeded
                 self._port = random.SystemRandom().choice(list(range(10000, 20000)))
-                self._sumo_helper = SumoHelper(self._parameters, self._port, self._seed)
+                self._seed = self._seed + random.randint(0, 276574)
+                self._sumo_helper = SumoHelper(self._parameters, self._port, int(self._seed))
                 conf_file = self._sumo_helper.sumocfg_file
                 logging.info("Configuration: " + str(conf_file))
-                sumoCmd = [sumo_binary, "-c", conf_file, "--seed", str(self._seed)]
+                sumoCmd = [sumo_binary, "-c", conf_file, "--tripinfo-output", self.out, "--seed", str(self._seed)]
                 self.ldm.start(sumoCmd, self._port)
             except Exception as e:
                 if str(e) == "connection closed by SUMO" and maxRetries > 0:
