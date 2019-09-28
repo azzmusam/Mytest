@@ -373,10 +373,15 @@ class ldm():
                         print(vehID + " speed " + str(speed) + " allowedSpeed " + str(allowedSpeed))
 
                 if self._waitingPenalty:
-                    clippedWaitingTime = min(waitingTime, 1.0) #min(waitingTime*0.5, 1.0)
+                    if waitingTime<=1:
+                        waitingTime = 0.5
+                    else:
+                        waitingTime = 1
+
+                    #clippedWaitingTime = min(waitingTime*0.5, 1.0)
 
                     delay = speed/allowedSpeed
-                    normalised_delay = 1 - speed/allowedSpeed
+                    normalised_delay = 1 - delay
                     clippedDelay = max(0, normalised_delay)
 
                     accln = speed - previous_speed
@@ -385,7 +390,8 @@ class ldm():
                         total_result['emergency_stops'] +=1
                     
                     self.prev_speed[vehID] = speed 
-                    reward = - 0.3*clippedDelay - 0.3*clippedWaitingTime
+                    reward = -0.5*normalised_delay -0.5*waitingTime
+                    #reward = - 0.*normalisedDelay - 0.3*clippedWaitingTime
                       
                 else:
                     clippedDelay = max(0, 1 - speed / allowedSpeed)
@@ -403,7 +409,7 @@ class ldm():
 
         num_teleports = self.getStartingTeleportNumber()
         
-        total_result['result'] += -0.1*num_teleports -0.2*total_result['emergency_stops']
+        #total_result['result'] += -0.1*num_teleports -0.2*total_result['emergency_stops']
         
         total_result['num_teleports'] += num_teleports
         return total_result
