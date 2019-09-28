@@ -221,20 +221,7 @@ class Agent(object):
    
     def upgrade(self):
         self.mem_cntr +=1
-
-    def test_graph(self, agent_name='A1'):
-        with self.graph.as_default():
-            self.test_reward = tf.placeholder(tf.float32, shape=[], name='Test_Reward/Time_step')
-            self.reward_sum = tf.summary.scalar('Test_Reward/Time_step', self.test_reward)
-
-            self.test_waitingtime = tf.placeholder(tf.float32, shape=[], name='Test_WaitingTime/Time_step')
-            self.waitingtime_sum = tf.summary.scalar('Test_WaitingTime/Time_step', self.test_waitingtime)
-
-            self.test_delay = tf.placeholder(tf.float32, shape=[], name='Test_Delay/Time_step')
-            self.delay_sum = tf.summary.scalar('Test_Delay/Time_step', self.test_delay)
-
             
-
     def choose_action(self, state):
         rand = np.random.random()
         if rand < self.epsilon:
