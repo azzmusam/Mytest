@@ -133,6 +133,10 @@ class DeepQNetwork(object):
         print('... Saving Checkpoint ...')
         self.epi_num = epi_num
         dir_name = os.path.join(self.chkpt_dir, str(self.epi_num))
+        if os.path.isdir(dir_name):
+            print("directory exists ", str(dirname))
+        else:
+            os.mkdir(dir_name)
         os.mkdir(dir_name)
         filename = "deepQnet_" + str(epi_num) + ".ckpt"
         self.checkpoint_file = os.path.join(dir_name, filename)
