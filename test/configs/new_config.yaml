@@ -5,8 +5,13 @@ parameters:
    
     y_t: 2 # yellow light traffic time
 
+<<<<<<< HEAD
+    resolutionInPixelsPerMeterX: 0.14
+    resolutionInPixelsPerMeterY: 0.14
+=======
     resolutionInPixelsPerMeterX: 0.084 #84x84 configuration
     resolutionInPixelsPerMeterY: 0.084
+>>>>>>> bdf7852ac82c626390f8c2bc1e268f4081252cda
 
     scaling_factor: 1 # Used to scale the rewards, but for now set to 1.
 
