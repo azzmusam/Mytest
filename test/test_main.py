@@ -74,6 +74,7 @@ if __name__ == '__main__':
             chkpt = os.path.join(*[path, 'tmp', 'q_eval'])
             filename = 'deepqnet.ckpt-' + str(i) + '.data-00000-of-00001'
             agent.load_models(filename)
+            env.reset_test_cntr()
         except:
             env.close()
         
