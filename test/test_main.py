@@ -1,5 +1,5 @@
 import aienvs
-from multi_DQRN import DeepQNetwork, Agent
+from imp_DQRN import DeepQNetwork, Agent
 import yaml
 import logging
 import pdb
