@@ -90,8 +90,9 @@ if __name__ == '__main__':
                 agent.reset()
 
             while not done:
-                action = agent.choose_action(stacked_state)
+                action = agent.test(stacked_state)
                 observation_, reward, done, info = env.step(action)
+                agent.test_writer(reward)
                 observation_, stacked_state_ = stack_frames(stacked_frames=observation, frame=observation_, buffer_size=stack_size)
 
                 test_time_steps_score.append(reward['result'])
