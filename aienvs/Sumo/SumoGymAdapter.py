@@ -159,6 +159,9 @@ class SumoGymAdapter(Env):
         random.seed(seed)
         self._seed = int(time.time())
 
+    def reset_test_cntr(self):
+        self.seed_cntr = 0
+
     def close(self):
         self.__del__()
 
