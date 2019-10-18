@@ -1,0 +1,8 @@
+model_checkpoint_path: "deepqnet.ckpt-6000"
+all_model_checkpoint_paths: "deepqnet.ckpt-0"
+all_model_checkpoint_paths: "deepqnet.ckpt-1000"
+all_model_checkpoint_paths: "deepqnet.ckpt-2000"
+all_model_checkpoint_paths: "deepqnet.ckpt-3000"
+all_model_checkpoint_paths: "deepqnet.ckpt-4000"
+all_model_checkpoint_paths: "deepqnet.ckpt-5000"
+all_model_checkpoint_paths: "deepqnet.ckpt-6000"

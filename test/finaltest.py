@@ -45,16 +45,18 @@ if __name__ == '__main__':
     env = SumoGymAdapter(parameters)
 
     mem = 0
-    stack_size = 2
+    stack_size = 1
     taken_Actions = []
     
-    while mem < 100:
+    while mem < 10000:
+        if mem>1 and done:
+            pdb.set_trace()
         done = False
         ob = env.reset()
         observation = ob
         observation, stacked_state = stack_frames(stacked_frames= None, frame=observation, buffer_size=stack_size)
 
-        while (not done) and (mem<10):
+        while (not done) and (mem<10000):
 
             action = env.action_space.sample()
             taken_Actions.append(action.get('0'))
@@ -66,4 +68,4 @@ if __name__ == '__main__':
 
             mem +=1
     
-    env.close()
+

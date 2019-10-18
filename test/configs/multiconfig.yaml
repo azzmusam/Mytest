@@ -3,9 +3,9 @@ parameters:
     box_bottom_corner: [0, 0] # still needs to be set for cross_network= done
     box_top_corner: [1500, 1000]  # stil needs to be set for cross_network= done.
    
-    y_t: 1 # yellow light traffic time
+    y_t: 4 # yellow light traffic time
 
-    resolutionInPixelsPerMeterX: 0.084
+    resolutionInPixelsPerMeterX: 0.056
     resolutionInPixelsPerMeterY: 0.084
 
     scaling_factor: 1 # Used to scale the rewards, but for now set to 1.
@@ -25,13 +25,6 @@ parameters:
     seed: 56 # need to change in the actual sumo library 
 
     generate_conf: True # it is used inside the sumohelper.py It is used to generate the sumoconfig file from the nodes, edges etc.
-
-    factored_agents: {0: ['0','1'],
-                      1: ['1','2']}
-
-    factored_coords: {0: [[0,0],[1000,1000]],
-                      1: [[500,0],[1500,1000]]}
-   
 
     tlphasesfile: 'multi.net.xml'
     route_starts: []
@@ -56,7 +49,9 @@ parameters:
 # This is used to define the directory where we save the file for route and configuration.
 # Its inside the scenario directory.
 
-    gui: False
+    gui: True
     type: 'byCorners' # need to change it in the actual sumo file 
     speed_dev: 0.0
     verbose: 0
+    
+    

@@ -179,7 +179,7 @@ class Agent(object):
 
         self.mem_cntr += 1
 
-        if self.mem_cntr > 50000:
+        if self.mem_cntr > self.mem_size:
             self.epsilon = 0.01
 
     def choose_action(self, state):

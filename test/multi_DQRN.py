@@ -21,18 +21,29 @@ class DeepQNetwork(object):
         self.sess = tf.Session()
         self.build_network()
         self.sess.run(tf.global_variables_initializer())
-        self.saver = tf.train.Saver(max_to_keep=None)
         self.checkpoint_file = os.path.join(chkpt_dir, "deepqnet.ckpt")
+        self.saver = tf.train.Saver(max_to_keep=100)
         self.params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
                                         scope=self.name)
         self.write_op = tf.summary.merge_all()
-        dirname = os.path.dirname(__file__)
-        self.log = os.path.join(*[dirname, 'tmp', 'log_dir', self.name])
+        #dirname = os.path.dirname(__file__)
+        #self.log = os.path.join(*[dirname, 'tmp', 'log_dir', self.name])
+        #if os.path.isdir(self.log):
+         #   print("output_results: ", str(self.log))
+        #else:
+            #os.mkdir(self.log)
+        self.make_log_dir()
+        self.writer = tf.summary.FileWriter(self.log, self.sess.graph)
+
+    def make_log_dir(self):
+        path = os.environ['AIENVS_HOME']
+        self.log = os.path.join(*[path, 'test', 'tmp', 'log_dir', self.name])
         if os.path.isdir(self.log):
-            print("output_results: ", str(self.log))
+            print('Log_Dir exists for tensorboard summary')
         else:
             os.mkdir(self.log)
-        self.writer = tf.summary.FileWriter(self.log, self.sess.graph)
+            print('Lod_Dir created for tensorboard summary', self.log)
+            
 
     def build_network(self):
 
@@ -89,9 +100,9 @@ class DeepQNetwork(object):
             lstm_cell = tf.nn.rnn_cell.LSTMCell(self.LSTM_DIM, initializer=tf.contrib.layers.xavier_initializer())
             outputs, self.cell_state = tf.nn.dynamic_rnn(lstm_cell, conv2_activated, initial_state=self.state_in, dtype=tf.float32, sequence_length=self.seq_len)
 
-            var1 = tf.get_variable('weights', (self.LSTM_DIM, self.n_actions), initializer=tf.contrib.layers.xavier_initializer(), 
+            var1 = tf.get_variable('weights', (self.LSTM_DIM, self.n_actions), initializer=tf.contrib.layers.xavier_initializer(), trainable=True, 
                                                     regularizer=tf.contrib.layers.l2_regularizer(0.01))
-            var2 = tf.get_variable('biases', (self.n_actions,), initializer=tf.constant_initializer(0.1))
+            var2 = tf.get_variable('biases', (self.n_actions,), trainable=True, initializer=tf.constant_initializer(0.1))
 
             h = outputs[:,-1,:] 
 
@@ -116,12 +127,6 @@ class DeepQNetwork(object):
         """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
         with tf.name_scope('summaries'):
             mean = tf.reduce_mean(var)
-            tf.summary.scalar('mean', mean)
-            with tf.name_scope('stddev'):
-                stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
-            tf.summary.scalar('stddev', stddev)
-            tf.summary.scalar('max', tf.reduce_max(var))
-            tf.summary.scalar('min', tf.reduce_min(var))
             tf.summary.histogram('histogram', var)
 
 
@@ -131,20 +136,18 @@ class DeepQNetwork(object):
 
     def save_checkpoint(self, epi_num):
         print('... Saving Checkpoint ...')
-        self.epi_num = epi_num
-        dir_name = os.path.join(self.chkpt_dir, str(self.epi_num))
-        if os.path.isdir(dir_name):
-            print("directory exists ", str(dirname))
-        else:
-            os.mkdir(dir_name)
-        os.mkdir(dir_name)
-        filename = "deepQnet_" + str(epi_num) + ".ckpt"
-        self.checkpoint_file = os.path.join(dir_name, filename)
-        self.saver.save(self.sess, self.checkpoint_file)
+        #self.epi_num = epi_num
+        #dir_name = os.path.join(self.chkpt_dir, str(self.epi_num))
+        #if os.path.isdir(dir_name):
+         #   print("directory exists ", str(dirname))
+        #else:
+         #   os.mkdir(dir_name)
+        #filename = "deepQnet_" + str(epi_num)
+        self.saver.save(self.sess, self.checkpoint_file, global_step=epi_num)
 
 class Agent(object):
     def __init__(self, alpha, gamma, mem_size, epsilon, batch_size, num_agents, act_per_agent,
-                 replace_target=30000, input_dims=(210, 160, 4), q_next_dir="tmp/q_next/single/next", q_eval_dir="tmp/q_eval/single/eval"):
+                 replace_target=3000, input_dims=(210, 160, 4), q_next_dir="tmp/q_next", q_eval_dir="tmp/q_eval"):
         self.num_agents = num_agents
         self.act_per_agent = act_per_agent
         self.input_dims = input_dims
@@ -155,7 +158,6 @@ class Agent(object):
         self.LSTM_DIM = 256
         self.mem_size = mem_size
         self.mem_cntr = 0
-        self.j=0
         self.epsilon = epsilon
         self.batch_size = batch_size
         self.replace_target = replace_target        
@@ -165,10 +167,15 @@ class Agent(object):
 
         self.q_next = DeepQNetwork(alpha, self.n_actions, input_dims=input_dims,
                                    name='q_next', chkpt_dir=q_next_dir)
+        self.create_memory()        
+        self.all_list = []
+        for j in it.product(tuple(self.action_space), repeat = self.num_agents):
+            self.all_list.append(j) 
 
-        self.state_memory = np.zeros((self.mem_size, *input_dims))
+    def create_memory(self):
+        self.state_memory = np.zeros((self.mem_size, *self.input_dims))
         
-        self.new_state_memory = np.zeros((self.mem_size, *input_dims))
+        self.new_state_memory = np.zeros((self.mem_size, *self.input_dims))
         self.action_memory = np.zeros((self.mem_size, self.n_actions),
                                       dtype=np.int8)
         self.reward_memory = np.zeros(self.mem_size)
@@ -178,9 +185,6 @@ class Agent(object):
         h_init = np.zeros((1, self.LSTM_DIM), np.float32)
         self.state_out = (c_init, h_init)
         
-        self.all_list = []
-        for j in it.product(tuple(self.action_space), repeat = self.num_agents):
-            self.all_list.append(j) 
 
 
     def action_hot_encoder(self, actions, all_list):
@@ -327,7 +331,19 @@ class Agent(object):
         q_target = reward_batch + \
             self.gamma*(q_next[idx, index_best_action])*(1 - terminal_batch)
  
-        _, summary1 = self.q_eval.sess.run([self.q_eval.train_op, self.q_eval.write_op],
+        _ = self.q_eval.sess.run(self.q_eval.train_op,
+                                 feed_dict={self.q_eval.states: state_batch,
+                                            self.q_eval.actions: action_batch,
+                                            self.q_eval.q_target: q_target,
+                                            self.q_eval.seq_len: self.seq_length,
+                                            self.q_eval.batch_size: self.batch_size,
+                                            self.q_eval.state_in: state,
+                                            self.q_eval._reward: self.reward['result'],
+                                            self.q_eval._waitingtime: self.reward['total_waiting'],
+                                            self.q_eval._delay: self.reward['total_delay']})
+
+        if self.mem_cntr % 100==0:
+            summary1, _ = self.q_eval.sess.run([self.q_eval.write_op, self.q_eval.train_op],
                                         feed_dict={self.q_eval.states: state_batch,
                                             self.q_eval.actions: action_batch,
                                             self.q_eval.q_target: q_target,
@@ -337,8 +353,8 @@ class Agent(object):
                                             self.q_eval._reward: self.reward['result'],
                                             self.q_eval._waitingtime: self.reward['total_waiting'],
                                             self.q_eval._delay: self.reward['total_delay']})
-        self.q_eval.writer.add_summary(summary1)
-        self.q_eval.writer.flush()
+            self.q_eval.writer.add_summary(summary1)
+            self.q_eval.writer.flush()
 
     def test(self, state):
         actions, lstm_state = self.q_eval.sess.run([self.q_eval.Q_values, self.q_eval.cell_state],
@@ -351,7 +367,7 @@ class Agent(object):
         self.state_out = (lstm_c[:1, :], lstm_h[:1, :])
         action = np.argmax(actions)
         action_ht = np.zeros((self.n_actions))
-        action_ht[action] = 1.
+        action_ht[action] = 1.	
         return self.action_decoder(action_ht, self.all_list)
 
     def reset(self):

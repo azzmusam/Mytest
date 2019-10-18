@@ -7,6 +7,7 @@ from aienvs.Sumo.SumoGymAdapter import SumoGymAdapter
 import numpy as np
 import os
 import pdb
+from statics_control import *
 
 
 def preprocess(observation):
@@ -47,31 +48,32 @@ if __name__ == '__main__':
 
     load_checkpoint = os.path.isfile('tmp/q_eval/deepqnet.ckpt')
 
-    agent = Agent(gamma=0.99, epsilon=1.0, alpha=0.00025, input_dims=(200,200,2),
-                  n_actions=2, mem_size=50, batch_size=32)
+    agent = Agent(gamma=0.99, epsilon=1.0, alpha=0.00025, input_dims=(150,150,1),
+                  n_actions=2, mem_size=2000, batch_size=32)
 
     if load_checkpoint:
         agent.load_models()
     episode_scores = []
-    maximum_episode_time = 5000
+    maximum_episode_time = 100
     maximum_time_steps = 1000000
     time_steps_score = []
-    stack_size = 2
+    stack_size = 1
     i = 0
     episode_number = 0
 
     print("Loading up the agent's memory with random gameplay")
 
-    while agent.mem_cntr < 999:
+    while agent.mem_cntr < 2000:
         done = False
         observation = env.reset()
         observation, stacked_state = stack_frames(stacked_frames = None, frame = observation, buffer_size = stack_size)
 
-        while (not done) and (agent.mem_cntr < 999):
+        while (not done) and (agent.mem_cntr < 2000):
 
             action = env.action_space.sample()
 
             observation_, reward, done, info = env.step(action)
+            env.stats_control.add_reward(reward)
 
             observation_, stacked_state_ = stack_frames(stacked_frames = observation, frame = observation_, buffer_size = stack_size)
 
@@ -92,16 +94,14 @@ if __name__ == '__main__':
                   'epsilon %.3f' % agent.epsilon)
             agent.save_models(episode_number= episode_number)
 
-        elif not episode_scores:
-            print('episode: ', episode_number, 'score: ', 0)
-
-        else:
+        try:
             print('episode: ', episode_number, 'score: ', score)
-
-        episode_number += 1
+        except:
+            print('episode: ', episode_number, 'score: ', 0)
+            pdb.set_trace()
 
         done = False
-        observation = env.reset()
+        observation = env.reset(episode_number)
         observation, stacked_state = stack_frames(stacked_frames= None, frame=observation, buffer_size=stack_size)
 
         score = 0
@@ -110,6 +110,7 @@ if __name__ == '__main__':
 
             action = agent.choose_action(stacked_state)
             observation_, reward, done, info = env.step(action)
+            env.sats_control.add_reward(reward)
 
             observation_, stacked_state_ = stack_frames(stacked_frames=observation, frame=observation_, buffer_size=stack_size)
 
@@ -127,7 +128,9 @@ if __name__ == '__main__':
 
             n +=1
 
-        episode_scores.append(score);
+        episode_scores.append(score)
+        stats_control.log(episode_number)
+        episode_number += 1
         i +=n
-    np.savetxt('scores/time_step.dat', time_steps_score, fmt='%.3f')
-    np.savetxt('scores/episode.dat', episode_scores, fmt='%.3f')
+    #np.savetxt('scores/time_step.dat', time_steps_score, fmt='%.3f')
+    #np.savetxt('scores/episode.dat', episode_scores, fmt='%.3f')
