@@ -348,11 +348,22 @@ class Agent(object):
         action = np.argmax(actions)
         action_ht = np.zeros((self.n_actions))
         action_ht[action] = 1.	
-        return self.action_decoder(action_ht, self.all_list)
+        return self.action_decoder(action_ht, self.all_list) 
+    
+    def test_writer(self, reward):
+        summary = self.sess.run(self.write_op,
+                                feed_dict= {self._reward: reward['result'],
+                                            self._waitingtime:reward['total_waiting'],
+                                            self._delay: reward['total_delay']})
+        if self.test_cntr % 100==0:
+            self.writer.add_summary(summary)
+            self.writer.flush()
+        self.test_cntr += 1
 
     def test_summary_initialiser(self):
         self.sess = tf.Session()
         self.write_op = tf.summary.merge_all()
+        self.test_cntr = 0
         path = os.environ['/home/azlaans/aienvs']
         self.log = os.path.join(*[path, 'test', 'tmp', 'log_dir', 'single', 'test', self.name])
         if os.path.isdir(self.log):
