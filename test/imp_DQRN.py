@@ -351,13 +351,16 @@ class Agent(object):
         return self.action_decoder(action_ht, self.all_list) 
     
     def test_writer(self, reward):
-        summary = self.sess.run(self.write_op,
+        summary = self.sess.run([self.reward_sum, self.waitingtime_sum, self.delay_sum],
                                 feed_dict= {self._reward: reward['result'],
                                             self._waitingtime:reward['total_waiting'],
                                             self._delay: reward['total_delay']})
-        if self.test_cntr % 100==0:
+        summary = self.sess.run(self.write_op)
+        self.writer.add_summary(summary)
+        self.writer.flush()
+        '''if self.test_cntr % 100==0:
             self.writer.add_summary(summary)
-            self.writer.flush()
+            self.writer.flush()'''
         self.test_cntr += 1
 
     def test_summary_initialiser(self):
