@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<edges xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/edges_file.xsd">
+    <edge id="L1" from="81" to="1" type="a"/>
+    <edge id="L2" from="1" to="81" type="b"/>
+    <edge id="L3" from="82" to="2" type="a"/>
+    <edge id="L4" from="2" to="82" type="b"/>
+    <edge id="L5" from="1" to="83" type="a"/>
+    <edge id="L6" from="83" to="1" type="b"/>
+    <edge id="L7" from="84" to="2" type="a"/>
+    <edge id="L8" from="2" to="84" type="b"/>
+    <edge id="L9" from="3" to="85" type="a"/>
+    <edge id="L10" from="85" to="3" type="b"/>
+    <edge id="L11" from="86" to="4" type="a"/>
+    <edge id="L12" from="4" to="86" type="b"/>
+    <edge id="L13" from="3" to="87" type="a"/>
+    <edge id="L14" from="87" to="3" type="b"/>
+    <edge id="L15" from="4" to="88" type="a"/>
+    <edge id="L16" from="88" to="4" type="b"/>
+
+    <edge id="L61" from="2" to="1" type="a"/>
+    <edge id="L62" from="1" to="2" type="b"/>
+    <edge id="L63" from="1" to="3" type="a"/>
+    <edge id="L64" from="3" to="1" type="b"/>
+    <edge id="L65" from="2" to="4" type="a"/>
+    <edge id="L66" from="4" to="2" type="b"/>
+    <edge id="L67" from="4" to="3" type="a"/>
+    <edge id="L68" from="3" to="4" type="b"/>
+
+    <edge id="D1" from="91" to="81" type="a"/>
+    <edge id="D2" from="81" to="91" type="b"/>
+    <edge id="D3" from="92" to="82" type="a"/>
+    <edge id="D4" from="82" to="92" type="b"/>
+    <edge id="D5" from="83" to="93" type="a"/>
+    <edge id="D6" from="93" to="83" type="b"/>
+    <edge id="D7" from="94" to="84" type="a"/>
+    <edge id="D8" from="84" to="94" type="b"/>
+    <edge id="D9" from="85" to="95" type="a"/>
+    <edge id="D10" from="95" to="85" type="b"/>
+    <edge id="D11" from="96" to="86" type="a"/>
+    <edge id="D12" from="86" to="96" type="b"/>
+    <edge id="D13" from="87" to="97" type="a"/>
+    <edge id="D14" from="97" to="87" type="b"/>
+    <edge id="D15" from="88" to="98" type="a"/>
+    <edge id="D16" from="98" to="88" type="b"/>
+</edges>

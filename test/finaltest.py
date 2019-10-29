@@ -36,7 +36,7 @@ if __name__ == '__main__':
     logger.setLevel(logging.INFO)
     logging.info("Starting test_traffic_new")
 
-    with open("configs/myconfig.yaml", 'r') as stream:
+    with open("configs/new_config.yaml", 'r') as stream:
         try:
             parameters = yaml.safe_load(stream)['parameters']
         except yaml.YAMLError as exc:
@@ -48,9 +48,7 @@ if __name__ == '__main__':
     stack_size = 1
     taken_Actions = []
     
-    while mem < 10000:
-        if mem>1 and done:
-            pdb.set_trace()
+    while mem<10000:
         done = False
         ob = env.reset()
         observation = ob
@@ -59,12 +57,8 @@ if __name__ == '__main__':
         while (not done) and (mem<10000):
 
             action = env.action_space.sample()
-            taken_Actions.append(action.get('0'))
+
             observation_, reward, done, info = env.step(action)
-
-            observation_, stacked_state_ = stack_frames(stacked_frames = observation, frame=observation_, buffer_size=stack_size)
-
-            observation = observation_
 
             mem +=1
     

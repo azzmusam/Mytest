@@ -4,7 +4,7 @@ from gym import spaces
 import os
 from aienvs.Sumo.LDM import ldm
 from aienvs.Sumo.SumoHelper import SumoHelper
-from aienvs.Sumo.state_representation import *
+from aienvs.Sumo.State_representation import *
 import time
 import os, sys
 if 'SUMO_HOME' in os.environ:
@@ -20,7 +20,7 @@ import copy
 import time
 from aienvs.Sumo.TrafficLightPhases import TrafficLightPhases
 import yaml
-from statics_control import *
+#from statics_control import *
 
 
 class SumoGymAdapter(Env):
@@ -77,11 +77,10 @@ class SumoGymAdapter(Env):
         self._chosen_action = None
         self.seed(42)  # in case no seed is given
         self._action_space = self._getActionSpace()
-        self.stats_control = Control()
-        self.testseed = list(self._parameters['test_seed'])
-        self.seed_cntr = 0
-        #self.factor_graph = self._parameters['factored_agents']
-        #self.n_factors = len(list(self.factor_graph.keys()))
+        #self.stats_control = Control()
+        self.factor_graph = self._parameters['factored_agents']
+        self.n_factors = len(list(self.factor_graph.keys()))
+        self.factored_coords = self._parameters['factored_coords']
     
     def step(self, actions:dict):
         self._set_lights(actions)
@@ -94,7 +93,6 @@ class SumoGymAdapter(Env):
 
         # as in openai gym, last one is the info list
         return obs, global_reward, done, []
-
 
     '''def actual_global_reward(self, global_reward):
         global_reward['result'] += -0.1*self._action_switches['0']
@@ -125,15 +123,14 @@ class SumoGymAdapter(Env):
             logging.info("Starting SUMO environment...")
             self._startSUMO()
             # TODO: Wouter: make state configurable ("state factory")
-            self._state = LdmMatrixState(self.ldm, [self._parameters['box_bottom_corner'], self._parameters['box_top_corner']], self._parameters["type"])
-
+            self._state = FactoredLDMMatrixState(self.factor_graph, self.factored_coords)
             return self._observe(), average_travel_times, average_travel_time
 
         else:
             logging.info("Starting SUMO environment...")
             self._startSUMO()
             # TODO: Wouter: make state configurable ("state factory")
-            self._state = LdmMatrixState(self.ldm, [self._parameters['box_bottom_corner'], self._parameters['box_top_corner']], self._parameters["type"])
+            self._state = FactoredLDMMatrixState(self.ldm, [self._parameters['box_bottom_corner'], self._parameters['box_top_corner']], self.factor_graph, self.factored_coords)
 
             return self._observe()
         
@@ -158,9 +155,6 @@ class SumoGymAdapter(Env):
     def seed(self, seed):
         random.seed(seed)
         self._seed = int(time.time())
-
-    def reset_test_cntr(self):
-        self.seed_cntr = 0
 
     def close(self):
         self.__del__()
@@ -196,14 +190,7 @@ class SumoGymAdapter(Env):
             try:
                 # this cannot be seeded
                 self._port = random.SystemRandom().choice(list(range(10000, 20000)))
-                if self._parameters['test']==False:
-                    self._seed = self._seed + random.randint(0, 276574)
-                else:
-                    try:
-                        self._seed = self.testseed[self.seed_cntr]
-                    except:
-                        self._seed = self._seed + random.randint(0, 276574)
-                    self.seed_cntr +=1
+                self._seed = self._seed + random.randint(0, 276574)
                 self._sumo_helper = SumoHelper(self._parameters, self._port, int(self._seed))
                 conf_file = self._sumo_helper.sumocfg_file
                 logging.info("Configuration: " + str(conf_file))
@@ -223,7 +210,7 @@ class SumoGymAdapter(Env):
         self.ldm.setResolutionInPixelsPerMeter(self._parameters['resolutionInPixelsPerMeterX'], self._parameters['resolutionInPixelsPerMeterY'])
         self.ldm.setPositionOfTrafficLights(self._parameters['lightPositions'])
 
-        if len(list(self.ldm.getTrafficLights())) != len(self._tlphases.getIntersectionIds()):
+        if list(self.ldm.getTrafficLights()) != self._tlphases.getIntersectionIds():
             raise Exception("environment traffic lights do not match those in the tlphasesfile " 
                     +self._parameters['tlphasesfile'] + str(self.ldm.getTrafficLights())
                     +str(self._tlphases.getIntersectionIds()))

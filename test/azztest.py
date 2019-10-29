@@ -14,7 +14,7 @@ import itertools as it
 
 if __name__ == "__main__":
 	logging.info("Starting test_traffic_new")
-	with open("configs/new_config.yaml", 'r') as stream:
+	with open("configs/vertical_config.yaml", 'r') as stream:
 		try:
 			parameters=yaml.safe_load(stream)['parameters']
 		except yaml.YAMLError as exc:

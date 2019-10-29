@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/netconvertConfiguration.xsd">
+
+    <input>
+        <node-files value="sample.nod.xml"/>
+        <edge-files value="sample.edg.xml"/>
+        <connection-files value="sample.con.xml"/>
+        <type-files value="sample.typ.xml"/>
+    </input>
+
+    <output>
+        <output-file value="sample.net.xml"/>
+    </output>
+
+    <processing>
+        <no-turnarounds value="true"/>
+    </processing>
+
+    <report>
+        <verbose value="true"/>
+    </report>
+
+</configuration>
