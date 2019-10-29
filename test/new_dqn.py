@@ -22,7 +22,7 @@ class DeepQNetwork(object):
         self.params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
                                         scope=self.name)
         self.write_op = tf.summary.merge_all()
-        self.writer = tf.summary.FileWriter("tmp/log_dir", self.sess.graph)
+        self.writer = tf.summary.FileWriter("tmp/log_dir/single/cross", self.sess.graph)
         #self.writer.add_graph(self.sess.graph)
 
 
@@ -118,7 +118,7 @@ class DeepQNetwork(object):
         self.epi_num = epi_num
         dir_name = os.path.join(self.chkpt_dir, str(self.epi_num))
         os.mkdir(dir_name)
-        filename = "deepQnet_" + str(epi_num) + ".ckpt"
+        filename = "deepQnet_episode:" + str(epi_num) + ".ckpt"
         self.checkpoint_file = os.path.join(dir_name, filename)
         self.saver.save(self.sess, self.checkpoint_file)
 
@@ -169,7 +169,7 @@ class Agent(object):
             actions[y] = 1.0
 
         self.action_memory[index] = actions
-        self.reward_memory[index] = reward.get('result')
+        self.reward_memory[index] = reward['result']
         # shape (mem_size,)
 
         self.new_state_memory[index] = state_
@@ -271,7 +271,7 @@ class Agent(object):
                                                   self.q_next.q_target: q_target})'''
 
 
-        self.q_eval.writer.add_summary(summary1, time.time())
+        self.q_eval.writer.add_summary(summary1)
         self.q_eval.writer.flush()
 
     def save_models(self, episode_number):

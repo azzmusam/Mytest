@@ -19,7 +19,8 @@ from aienvs.Environment import Env
 import copy
 import time
 from aienvs.Sumo.TrafficLightPhases import TrafficLightPhases
-from statics_control import *
+import yaml
+from aienvs.Sumo.statics_control import *
 
 
 class SumoGymAdapter(Env):
@@ -76,7 +77,11 @@ class SumoGymAdapter(Env):
         self._chosen_action = None
         self.seed(42)  # in case no seed is given
         self._action_space = self._getActionSpace()
-        self.stats_control = Control()
+        self.stats_control = Control(self._parameters['tripinfofolder'])
+        self.testseed = list(self._parameters['test_seed'])
+        self.seed_cntr = 0
+        #self.factor_graph = self._parameters['factored_agents']
+        #self.n_factors = len(list(self.factor_graph.keys()))
     
     def step(self, actions:dict):
         self._set_lights(actions)
@@ -89,6 +94,7 @@ class SumoGymAdapter(Env):
 
         # as in openai gym, last one is the info list
         return obs, global_reward, done, []
+
 
     '''def actual_global_reward(self, global_reward):
         global_reward['result'] += -0.1*self._action_switches['0']
@@ -153,6 +159,9 @@ class SumoGymAdapter(Env):
         random.seed(seed)
         self._seed = int(time.time())
 
+    def reset_test_cntr(self):
+        self.seed_cntr = 0
+
     def close(self):
         self.__del__()
 
@@ -180,14 +189,22 @@ class SumoGymAdapter(Env):
         maxRetries = self._parameters['maxConnectRetries']
         sumo_binary = checkBinary(val)
         self.dirname = os.path.dirname(__file__)
-        self.out = os.path.join(self.dirname, "../../test/Stats", "tripinfo.xml")
+        outfile = self._parameters['tripinfofolder']
+        self.out = os.path.join(*[self.dirname, "../../test/Stats", outfile, "tripinfo.xml"])
 
         # Try repeatedly to connect
         while True:
             try:
                 # this cannot be seeded
                 self._port = random.SystemRandom().choice(list(range(10000, 20000)))
-                self._seed = self._seed + random.randint(0, 276574)
+                if self._parameters['test']==False:
+                    self._seed = self._seed + random.randint(0, 276574)
+                else:
+                    try:
+                        self._seed = self.testseed[self.seed_cntr]
+                    except:
+                        self._seed = self._seed + random.randint(0, 276574)
+                    self.seed_cntr +=1
                 self._sumo_helper = SumoHelper(self._parameters, self._port, int(self._seed))
                 conf_file = self._sumo_helper.sumocfg_file
                 logging.info("Configuration: " + str(conf_file))
@@ -203,10 +220,11 @@ class SumoGymAdapter(Env):
                 break
 
         self.ldm.init(waitingPenalty=self._parameters['waiting_penalty'], new_reward=self._parameters['new_reward'])  # ignore reward for now
+        # used to set boundaries to compute the network space and it computes the states, i can use this to compute states based on the fatored graphs.
         self.ldm.setResolutionInPixelsPerMeter(self._parameters['resolutionInPixelsPerMeterX'], self._parameters['resolutionInPixelsPerMeterY'])
         self.ldm.setPositionOfTrafficLights(self._parameters['lightPositions'])
 
-        if list(self.ldm.getTrafficLights()) != self._tlphases.getIntersectionIds():
+        if len(list(self.ldm.getTrafficLights())) != len(self._tlphases.getIntersectionIds()):
             raise Exception("environment traffic lights do not match those in the tlphasesfile " 
                     +self._parameters['tlphasesfile'] + str(self.ldm.getTrafficLights())
                     +str(self._tlphases.getIntersectionIds()))

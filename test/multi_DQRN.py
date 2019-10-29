@@ -11,6 +11,11 @@ class DeepQNetwork(object):
 
     def __init__(self, lr, n_actions, name, fc1_dims=512, LSTM_DIM=256,
                  input_dims=(210, 160, 4), chkpt_dir="tmp/dqn"):
+        config = tf.ConfigProto()
+        #config.gpu_options.visible_device_list= '2,3'
+        config.gpu_options.allow_growth = True
+        #config.gpu_options.per_process_gpu_memory_fraction = 0.5
+        #config.log_device_placement = True
         self.lr = lr
         self.name = name
         self.LSTM_DIM = LSTM_DIM
@@ -18,20 +23,20 @@ class DeepQNetwork(object):
         self.fc1_dims = fc1_dims
         self.chkpt_dir = chkpt_dir
         self.input_dims = input_dims
-        self.sess = tf.Session()
+        self.sess = tf.Session(config=config)
         self.build_network()
         self.sess.run(tf.global_variables_initializer())
-        self.saver = tf.train.Saver(max_to_keep=None)
-        self.checkpoint_file = os.path.join(chkpt_dir, "deepqnet.ckpt")
+        self.saver = tf.train.Saver(max_to_keep=150)
+        self.checkpoint_file = os.path.join(chkpt_dir, "vertical_deepqnet.ckpt")
         self.params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
                                         scope=self.name)
         self.write_op = tf.summary.merge_all()
         dirname = os.path.dirname(__file__)
-        self.log = os.path.join(*[dirname, 'tmp', 'log_dir', self.name])
-        if os.path.isdir(self.log):
+        self.log = os.path.join(*[dirname, 'tmp', 'vertical','log_dir', self.name])
+        if os.path.exists(self.log):
             print("output_results: ", str(self.log))
         else:
-            os.mkdir(self.log)
+            os.makedirs(self.log)
         self.writer = tf.summary.FileWriter(self.log, self.sess.graph)
 
     def build_network(self):
@@ -63,14 +68,14 @@ class DeepQNetwork(object):
 
             conv1 = tf.layers.conv2d(inputs=self.states, filters=16,
                                      kernel_size=(8, 8), strides=(4,4), name='conv1', padding='VALID',
-                                     kernel_initializer=tf.contrib.layers.variance_scaling_initializer(factor=2),use_bias=True, bias_initializer=tf.constant_initializer(0.1))
+                                     kernel_initializer=tf.contrib.layers.variance_scaling_initializer(factor=2),use_bias=True, bias_initializer=tf.constant_initializer(0.01))
             # TensorShape([Dimension(None), Dimension(44), Dimension(39), Dimension(32)])
 
             conv1_activated = tf.nn.relu(conv1)
 
             conv2 = tf.layers.conv2d(inputs=conv1_activated, filters=32,
                                      kernel_size=(4, 4), strides=(2,2), name='conv2', padding='VALID',
-                                     kernel_initializer=tf.contrib.layers.variance_scaling_initializer(factor=2), use_bias=True, bias_initializer=tf.constant_initializer(0.1))
+                                     kernel_initializer=tf.contrib.layers.variance_scaling_initializer(factor=2), use_bias=True, bias_initializer=tf.constant_initializer(0.01))
             # TensorShape([Dimension(None), Dimension(21), Dimension(18), Dimension(64)])
 
             conv2_activated = tf.nn.relu(conv2)
@@ -89,9 +94,9 @@ class DeepQNetwork(object):
             lstm_cell = tf.nn.rnn_cell.LSTMCell(self.LSTM_DIM, initializer=tf.contrib.layers.xavier_initializer())
             outputs, self.cell_state = tf.nn.dynamic_rnn(lstm_cell, conv2_activated, initial_state=self.state_in, dtype=tf.float32, sequence_length=self.seq_len)
 
-            var1 = tf.get_variable('weights', (self.LSTM_DIM, self.n_actions), initializer=tf.contrib.layers.xavier_initializer(), 
+            var1 = tf.get_variable('weights', (self.LSTM_DIM, self.n_actions), initializer=tf.contrib.layers.xavier_initializer(), trainable=True, 
                                                     regularizer=tf.contrib.layers.l2_regularizer(0.01))
-            var2 = tf.get_variable('biases', (self.n_actions,), initializer=tf.constant_initializer(0.1))
+            var2 = tf.get_variable('biases', (self.n_actions,), trainable=True, initializer=tf.constant_initializer(0.01))
 
             h = outputs[:,-1,:] 
 
@@ -115,32 +120,29 @@ class DeepQNetwork(object):
     def variable_summaries(self, var):
         """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
         with tf.name_scope('summaries'):
-            mean = tf.reduce_mean(var)
-            tf.summary.scalar('mean', mean)
-            with tf.name_scope('stddev'):
-                stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
-            tf.summary.scalar('stddev', stddev)
-            tf.summary.scalar('max', tf.reduce_max(var))
-            tf.summary.scalar('min', tf.reduce_min(var))
             tf.summary.histogram('histogram', var)
 
 
-    def load_checkpoint(self):
+    def load_checkpoint(self, checkpoint):
         print('... loading checkpoint ...')
-        self.saver.restore(self.sess, self.checkpoint_file)
+        self.saver.restore(self.sess, checkpoint)
 
     def save_checkpoint(self, epi_num):
         print('... Saving Checkpoint ...')
-        self.epi_num = epi_num
-        dir_name = os.path.join(self.chkpt_dir, str(self.epi_num))
-        os.mkdir(dir_name)
-        filename = "deepQnet_" + str(epi_num) + ".ckpt"
-        self.checkpoint_file = os.path.join(dir_name, filename)
-        self.saver.save(self.sess, self.checkpoint_file)
+        #self.epi_num = epi_num
+        #dir_name = os.path.join(self.chkpt_dir, str(self.epi_num))
+        #if os.path.isdir(dir_name):
+         #   print("directory exists ", str(dirname))
+        #else:
+         #   os.mkdir(dir_name)
+        #os.mkdir(dir_name)
+        #filename = "deepQnet_" + str(epi_num) + ".ckpt"
+        #self.checkpoint_file = os.path.join(dir_name, filename)
+        self.saver.save(self.sess, self.checkpoint_file, global_step=epi_num)
 
 class Agent(object):
     def __init__(self, alpha, gamma, mem_size, epsilon, batch_size, num_agents, act_per_agent,
-                 replace_target=30000, input_dims=(210, 160, 4), q_next_dir="tmp/q_next/single/next", q_eval_dir="tmp/q_eval/single/eval"):
+                 replace_target=30000, input_dims=(210, 160, 4), q_next_dir="tmp/vertical/q_next", q_eval_dir="tmp/vertical/q_eval"):
         self.num_agents = num_agents
         self.act_per_agent = act_per_agent
         self.input_dims = input_dims
@@ -151,7 +153,6 @@ class Agent(object):
         self.LSTM_DIM = 256
         self.mem_size = mem_size
         self.mem_cntr = 0
-        self.j=0
         self.epsilon = epsilon
         self.batch_size = batch_size
         self.replace_target = replace_target        
@@ -323,7 +324,20 @@ class Agent(object):
         q_target = reward_batch + \
             self.gamma*(q_next[idx, index_best_action])*(1 - terminal_batch)
  
-        _, summary1 = self.q_eval.sess.run([self.q_eval.train_op, self.q_eval.write_op],
+        if self.mem_cntr % 400==0:
+            _, summary = self.q_eval.sess.run([self.q_eval.train_op, self.q_eval.write_op],
+                                           feed_dict={self.q_eval.states: state_batch,
+                                                      self.q_eval.actions: action_batch,
+                                                      self.q_eval.q_target: q_target,
+                                                      self.q_eval.seq_len: self.seq_length,
+                                                      self.q_eval.batch_size: self.batch_size,
+                                                      self.q_eval.state_in: state,self.q_eval._reward: self.reward['result'],
+                                                      self.q_eval._waitingtime: self.reward['total_waiting'],
+                                                      self.q_eval._delay: self.reward['total_delay']})
+            self.q_eval.writer.add_summary(summary)
+            self.q_eval.writer.flush()
+        else:
+            _ = self.q_eval.sess.run(self.q_eval.train_op,
                                         feed_dict={self.q_eval.states: state_batch,
                                             self.q_eval.actions: action_batch,
                                             self.q_eval.q_target: q_target,
@@ -333,8 +347,6 @@ class Agent(object):
                                             self.q_eval._reward: self.reward['result'],
                                             self.q_eval._waitingtime: self.reward['total_waiting'],
                                             self.q_eval._delay: self.reward['total_delay']})
-        self.q_eval.writer.add_summary(summary1)
-        self.q_eval.writer.flush()
 
     def test(self, state):
         actions, lstm_state = self.q_eval.sess.run([self.q_eval.Q_values, self.q_eval.cell_state],
@@ -358,9 +370,9 @@ class Agent(object):
         self.q_eval.save_checkpoint(epi_num = self.episode_number)
         self.q_next.save_checkpoint(epi_num = self.episode_number)
 
-    def load_models(self):
-        self.q_eval.load_checkpoint()
-        self.q_next.load_checkpoint()
+    def load_models(self, q_eval_checkpoint, q_next_checkpoint):
+        self.q_eval.load_checkpoint(q_eval_checkpoint)
+        self.q_next.load_checkpoint(q_next_checkpoint)
 
     def update_graph(self):
         t_params = self.q_next.params

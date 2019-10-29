@@ -7,7 +7,7 @@ from aienvs.Sumo.SumoGymAdapter import SumoGymAdapter
 import numpy as np
 import os
 import pdb
-
+import csv
 
 def preprocess(observation):
     return np.mean(observation[30:,:], axis=2).reshape(180, 160, 1)
@@ -47,8 +47,8 @@ if __name__ == '__main__':
 
     load_checkpoint = os.path.isfile('tmp/q_eval/deepqnet.ckpt')
 
-    agent = Agent(gamma=0.99, epsilon=1.0, alpha=0.00025, input_dims=(200,200,2),
-                  n_actions=2, mem_size=50, batch_size=32)
+    agent = Agent(gamma=0.99, epsilon=1.0, alpha=0.00025, input_dims=(140,140,2),
+                  n_actions=2, mem_size=50000, batch_size=32)
 
     if load_checkpoint:
         agent.load_models()
@@ -62,12 +62,12 @@ if __name__ == '__main__':
 
     print("Loading up the agent's memory with random gameplay")
 
-    while agent.mem_cntr < 999:
+    while agent.mem_cntr < 50000:
         done = False
         observation = env.reset()
         observation, stacked_state = stack_frames(stacked_frames = None, frame = observation, buffer_size = stack_size)
 
-        while (not done) and (agent.mem_cntr < 999):
+        while (not done) and (agent.mem_cntr < 50000):
 
             action = env.action_space.sample()
 
@@ -86,9 +86,9 @@ if __name__ == '__main__':
     while i < maximum_time_steps:
 
         if episode_number % 10 == 0 and episode_number > 0:
-            avg_score = np.mean(episode_scores[max(0, episode_number-10):(episode_number+1)])
+            #avg_score = np.mean(episode_scores[max(0, episode_number-10):(episode_number+1)])
             print('episode: ', episode_number, 'score: ', score,
-                  'average score  %.3f' % avg_score,
+                  #'average score  %.3f' % avg_score,
                   'epsilon %.3f' % agent.epsilon)
             agent.save_models(episode_number= episode_number)
 
@@ -106,7 +106,7 @@ if __name__ == '__main__':
 
         score = 0
         n = 0
-        while not done and  n < maximum_episode_time:
+        while not done and n < maximum_episode_time:
 
             action = agent.choose_action(stacked_state)
             observation_, reward, done, info = env.step(action)
@@ -127,7 +127,16 @@ if __name__ == '__main__':
 
             n +=1
 
-        episode_scores.append(score);
+        episode_scores.append(score)
+
         i +=n
-    np.savetxt('scores/time_step.dat', time_steps_score, fmt='%.3f')
-    np.savetxt('scores/episode.dat', episode_scores, fmt='%.3f')
+
+    with open('time_step.csv', 'w', newline='') as f:
+        writer = csv.writer(f)
+        for val in time_steps_score:
+            writer.writerow([val])
+
+    with open('episode.csv', 'w', newline='') as f:
+        writer = csv.writer(f)
+        for val in episode_scores:
+            writer.writerow([val])
