@@ -59,7 +59,7 @@ if __name__ == '__main__':
     #if load_checkpoint:
      #   agent.load_models()
 
-    maximum_time_steps = 1000000
+    maximum_time_steps = 500
     train_time_steps_score = []
     train_time_steps_delay = []
     train_time_steps_waitingtime = []
@@ -71,6 +71,7 @@ if __name__ == '__main__':
     test_int = 10000 #test interval
     maximum_test_time = 4000 #no of test simulation
     total_simulation = 7
+
     test_reward = []
     test_delay = []
     test_waitingtime = []
@@ -156,9 +157,7 @@ if __name__ == '__main__':
                         sim_step+=1
                         print('SIMULATION STEP: ',sim_step)
                         print('T: ', tt)
-
                     done = False
-                    
                     try:
                         observation, average_travel_times, average_travel_time = env.reset(tt+1)
                         test_average_travel_time.append(average_travel_time)

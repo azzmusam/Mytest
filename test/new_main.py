@@ -8,6 +8,7 @@ import numpy as np
 import os
 import pdb
 import csv
+from statics_control import *
 
 def preprocess(observation):
     return np.mean(observation[30:,:], axis=2).reshape(180, 160, 1)
@@ -53,25 +54,26 @@ if __name__ == '__main__':
     if load_checkpoint:
         agent.load_models()
     episode_scores = []
-    maximum_episode_time = 5000
+    maximum_episode_time = 100
     maximum_time_steps = 1000000
     time_steps_score = []
-    stack_size = 2
+    stack_size = 1
     i = 0
     episode_number = 0
 
     print("Loading up the agent's memory with random gameplay")
 
     while agent.mem_cntr < 50000:
+
         done = False
         observation = env.reset()
         observation, stacked_state = stack_frames(stacked_frames = None, frame = observation, buffer_size = stack_size)
 
         while (not done) and (agent.mem_cntr < 50000):
-
             action = env.action_space.sample()
 
             observation_, reward, done, info = env.step(action)
+            env.stats_control.add_reward(reward)
 
             observation_, stacked_state_ = stack_frames(stacked_frames = observation, frame = observation_, buffer_size = stack_size)
 
@@ -92,16 +94,14 @@ if __name__ == '__main__':
                   'epsilon %.3f' % agent.epsilon)
             agent.save_models(episode_number= episode_number)
 
-        elif not episode_scores:
-            print('episode: ', episode_number, 'score: ', 0)
-
-        else:
+        try:
             print('episode: ', episode_number, 'score: ', score)
-
-        episode_number += 1
+        except:
+            print('episode: ', episode_number, 'score: ', 0)
+            pdb.set_trace()
 
         done = False
-        observation = env.reset()
+        observation = env.reset(episode_number)
         observation, stacked_state = stack_frames(stacked_frames= None, frame=observation, buffer_size=stack_size)
 
         score = 0
@@ -110,6 +110,7 @@ if __name__ == '__main__':
 
             action = agent.choose_action(stacked_state)
             observation_, reward, done, info = env.step(action)
+            env.sats_control.add_reward(reward)
 
             observation_, stacked_state_ = stack_frames(stacked_frames=observation, frame=observation_, buffer_size=stack_size)
 
@@ -128,7 +129,6 @@ if __name__ == '__main__':
             n +=1
 
         episode_scores.append(score)
-
         i +=n
 
     with open('time_step.csv', 'w', newline='') as f:

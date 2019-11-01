@@ -23,6 +23,7 @@ import yaml
 from aienvs.Sumo.statics_control import *
 
 
+
 class SumoGymAdapter(Env):
     """
     An adapter that makes Sumo behave as a proper Gym environment.
@@ -66,12 +67,10 @@ class SumoGymAdapter(Env):
         logging.debug(parameters)
         self._parameters = copy.deepcopy(self._DEFAULT_PARAMETERS)
         self._parameters.update(parameters)
-
         dirname = os.path.dirname(__file__)
         tlPhasesFile = os.path.join(dirname, "../../scenarios/Sumo/", self._parameters['scene'], self._parameters['tlphasesfile'])
         self._tlphases = TrafficLightPhases(tlPhasesFile)
         self.ldm = ldm(using_libsumo=self._parameters['libsumo'])
-        
         self._takenActions = {}
         self._yellowTimer = {}
         self._chosen_action = None

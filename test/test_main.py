@@ -14,7 +14,7 @@ path = os.getcwd()
 def saver(data, name, iternr):
     path = os.getcwd()
     name = str(name)
-    filename = 'test_result/'+ name + str(iternr) +'.csv'
+    filename = 'test_result/vertical/'+ name + str(iternr) +'.csv'
     pathname = os.path.join(path, filename)
     outfile = open(pathname, 'a')
     writer = csv.writer(outfile)
@@ -23,14 +23,14 @@ def saver(data, name, iternr):
 def fileinitialiser(test_result):
     path = os.getcwd()
     for key in test_result.keys():
-        filename = 'test_result/'+ key + '10000'  +'.csv'
+        filename = 'test_result/vertical/'+ key + '10000'  +'.csv'
         pathname = os.path.join(path, filename)
         with open(pathname, "w") as my_empty_csv:
             pass
 
 def file_rename(name, iternr):
     path = os.getcwd()
-    res_dir = os.path.join(path, 'test_result')
+    res_dir = os.path.join(path, 'test_result/vertical')
     #filename = 'test_result/'+ name + str(iternr-10000) +'.csv'
     #res_dir = os.path.join(path, filename)
     oldname = str(name) + str(iternr-10000)  + '.csv'
@@ -38,7 +38,7 @@ def file_rename(name, iternr):
     os.rename(res_dir+ '/' + oldname, res_dir + '/' + newname)
 
 def filename():
-    res_dir = os.path.join(path, 'test_result')
+    res_dir = os.path.join(path, 'test_result/vertical/')
     files = os.listdir(res_dir)
     #return csvfile = [files for files in files if files.endswith('csv')]
 
@@ -69,7 +69,7 @@ if __name__ == '__main__':
     logger.setLevel(logging.INFO)
     logging.info("Starting test_traffic_new")
 
-    with open("configs/new_config.yaml", 'r') as stream:
+    with open("configs/vertical_config.yaml", 'r') as stream:
         try:
             parameters = yaml.safe_load(stream)['parameters']
         except yaml.YAMLError as exc:
@@ -78,7 +78,7 @@ if __name__ == '__main__':
     env = SumoGymAdapter(parameters)
     mem_size = None
     agent = Agent(gamma=0.99, epsilon=1.0, alpha=0.00025, input_dims=(84,84,1),
-                  act_per_agent=2, num_agents=1, mem_size=mem_size, batch_size=32, test=True)
+                  act_per_agent=2, num_agents=2, mem_size=mem_size, batch_size=32, test=True)
 
     total_number_simulation = 8
     stack_size = 1
@@ -96,7 +96,7 @@ if __name__ == '__main__':
 
     fileinitialiser(test_result)
     
-    for i in range(10000, 1010000, 10000):
+    for i in range(10000, 1000000, 10000):
 
         if i>10000:
             env.reset_test_cntr()
@@ -112,8 +112,8 @@ if __name__ == '__main__':
         test_result = result_initialiser()
 
         try:
-            filename = 'deepqnet.ckpt-' + str(i)
-            chkpt = os.path.join(*[path, 'tmp', 'q_eval', filename])
+            filename = 'vertical_deepqnet.ckpt-' + str(i)
+            chkpt = os.path.join(*[path, 'tmp', 'vertical', 'q_eval', filename])
             agent.load_models(chkpt)
             print('LOADED CHECKPOINT:', filename)
         except:

@@ -26,6 +26,12 @@ parameters:
 
     generate_conf: True # it is used inside the sumohelper.py It is used to generate the sumoconfig file from the nodes, edges etc.
 
+    factored_agents: {0: ['0','1'],
+                      1: ['1','2']}
+
+    factored_coords: {0: [[0,0],[1000,1000]],
+                      1: [[500,0],[1500,1000]]}
+
     tlphasesfile: 'multi.net.xml'
     route_starts: []
     route_ends: []

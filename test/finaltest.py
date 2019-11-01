@@ -36,7 +36,7 @@ if __name__ == '__main__':
     logger.setLevel(logging.INFO)
     logging.info("Starting test_traffic_new")
 
-    with open("configs/myconfig.yaml", 'r') as stream:
+    with open("configs/new_config.yaml", 'r') as stream:
         try:
             parameters = yaml.safe_load(stream)['parameters']
         except yaml.YAMLError as exc:
@@ -45,25 +45,21 @@ if __name__ == '__main__':
     env = SumoGymAdapter(parameters)
 
     mem = 0
-    stack_size = 2
+    stack_size = 1
     taken_Actions = []
     
-    while mem < 100:
+    while mem<10000:
         done = False
         ob = env.reset()
         observation = ob
         observation, stacked_state = stack_frames(stacked_frames= None, frame=observation, buffer_size=stack_size)
 
-        while (not done) and (mem<10):
+        while (not done) and (mem<10000):
 
             action = env.action_space.sample()
-            taken_Actions.append(action.get('0'))
+
             observation_, reward, done, info = env.step(action)
-
-            observation_, stacked_state_ = stack_frames(stacked_frames = observation, frame=observation_, buffer_size=stack_size)
-
-            observation = observation_
 
             mem +=1
     
-    env.close()
+

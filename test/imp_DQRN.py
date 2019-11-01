@@ -14,9 +14,9 @@ class DeepQNetwork(object):
         self.lr = lr
         self.name = name
         config = tf.ConfigProto()
-        config.gpu_options.visible_device_list = "0,1"
-        config.gpu_options.allow_growth = True
-        config.gpu_options.per_process_gpu_memory_fraction = 0.5
+        config.gpu_options.visible_device_list = "2,3"
+        #config.gpu_options.allow_growth = True
+        #config.gpu_options.per_process_gpu_memory_fraction = 0.5
         self.LSTM_DIM = LSTM_DIM
         self.n_actions = n_actions
         self.fc1_dims = fc1_dims
@@ -74,7 +74,6 @@ class DeepQNetwork(object):
 
             #self._delay = tf.placeholder(tf.float32, shape=[], name='TotalDelay/Time_step')
             #self.delay_sum = tf.summary.scalar('TotalDelay/Time_step', self._delay)
-
 
             conv1 = tf.layers.conv2d(inputs=self.states, filters=16,
                                      kernel_size=(8, 8), strides=(4,4), name='conv1', padding='VALID',
@@ -169,7 +168,8 @@ class Agent(object):
                                    name='q_eval', chkpt_dir=q_eval_dir)
 
         #self.q_next = DeepQNetwork(alpha, self.n_actions, input_dims=input_dims,
-         #                          name='q_next', chkpt_dir=q_next_dir)
+                                   #name='q_next', chkpt_dir=q_next_dir)
+
         if test==False:
             self.create_memory()
         else:
@@ -327,7 +327,7 @@ class Agent(object):
                                             self.q_eval._waitingtime: self.reward['total_waiting'],
                                             self.q_eval._delay: self.reward['total_delay']})
 
-        if self.mem_cntr % 100==0:
+        if self.mem_cntr % 400==0:
             summary1, _ = self.q_eval.sess.run([self.q_eval.write_op, self.q_eval.train_op],
                                         feed_dict={self.q_eval.states: state_batch,
                                             self.q_eval.actions: action_batch,
@@ -354,52 +354,11 @@ class Agent(object):
         action_ht[action] = 1.	
         return self.action_decoder(action_ht, self.all_list) 
     
-    '''def test_writer(self, reward):
-        summary = self.sess.run([self.reward_sum, self.waitingtime_sum, self.delay_sum],
-                                feed_dict= {self._reward: reward['result'],
-                                            self._waitingtime:reward['total_waiting'],
-                                            self._delay: reward['total_delay']})
-        summary = self.sess.run(self.write_op,
-                                feed_dict= {self._reward: reward['result'],
-                                            self._waitingtime:reward['total_waiting'],
-                                            self._delay: reward['total_delay']})
-        self.writer.add_summary(summary, self.test_cntr)
-        self.writer.flush()
-
-        if self.test_cntr % 100==0:
-            summary = self.sess.run(self.write_op)
-            self.writer.add_summary(summary)
-            self.writer.flush()
-        self.test_cntr += 1'''
-
     def test_summary_initialiser(self):
         c_init = np.zeros((1, self.LSTM_DIM), np.float32)
         h_init = np.zeros((1, self.LSTM_DIM), np.float32)
         self.state_out = (c_init, h_init)
-        #self.test_cntr = 0
-        #self.graph1 = tf.Graph()
-        #self.sess = tf.Session(graph=self.graph1)
-        #self.write_op = tf.summary.merge_all()
         self.test_cntr = 0
-        path = '/home/azlaans/aienvs'
-        '''self.log = os.path.join(*[path, 'test', 'tmp', 'log_dir', 'single', 'test'])
-        if os.path.isdir(self.log):
-            print('Log_Dir exists for tensorboard summary')
-        else:
-            os.mkdir(self.log)
-            print('Lod_Dir created for tensorboard summary', self.log)
-        #self.writer = tf.summary.FileWriter(self.log, self.sess.graph)
-        with self.graph1.as_default():
-            self._reward = tf.placeholder(tf.float32, shape=[], name='Reward/Time_step')
-            self.reward_sum = tf.summary.scalar('Reward/Time_step', self._reward)
-
-            self._waitingtime = tf.placeholder(tf.float32, shape=[], name='TotalWaitingTime/Time_step')
-            self.waitingtime_sum = tf.summary.scalar('TotalWaitingTime/Time_step', self._waitingtime)
-
-            self._delay = tf.placeholder(tf.float32, shape=[], name='TotalDelay/Time_step')
-            self.delay_sum = tf.summary.scalar('TotalDelay/Time_step', self._delay)
-
-        self.writer = tf.summary.FileWriter(self.log, self.sess.graph)'''
 
     def reset(self):
         self.state_out = (np.zeros(self.state_out[0].shape),np.zeros(self.state_out[1].shape))

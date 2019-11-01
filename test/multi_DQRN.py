@@ -12,7 +12,7 @@ class DeepQNetwork(object):
     def __init__(self, lr, n_actions, name, fc1_dims=512, LSTM_DIM=256,
                  input_dims=(210, 160, 4), chkpt_dir="tmp/dqn"):
         config = tf.ConfigProto()
-        #config.gpu_options.visible_device_list= '2,3'
+        config.gpu_options.visible_device_list= '2,3'
         config.gpu_options.allow_growth = True
         #config.gpu_options.per_process_gpu_memory_fraction = 0.5
         #config.log_device_placement = True
@@ -96,6 +96,7 @@ class DeepQNetwork(object):
 
             var1 = tf.get_variable('weights', (self.LSTM_DIM, self.n_actions), initializer=tf.contrib.layers.xavier_initializer(), trainable=True, 
                                                     regularizer=tf.contrib.layers.l2_regularizer(0.01))
+
             var2 = tf.get_variable('biases', (self.n_actions,), trainable=True, initializer=tf.constant_initializer(0.01))
 
             h = outputs[:,-1,:] 
@@ -129,20 +130,12 @@ class DeepQNetwork(object):
 
     def save_checkpoint(self, epi_num):
         print('... Saving Checkpoint ...')
-        #self.epi_num = epi_num
-        #dir_name = os.path.join(self.chkpt_dir, str(self.epi_num))
-        #if os.path.isdir(dir_name):
-         #   print("directory exists ", str(dirname))
-        #else:
-         #   os.mkdir(dir_name)
-        #os.mkdir(dir_name)
-        #filename = "deepQnet_" + str(epi_num) + ".ckpt"
-        #self.checkpoint_file = os.path.join(dir_name, filename)
         self.saver.save(self.sess, self.checkpoint_file, global_step=epi_num)
 
 class Agent(object):
     def __init__(self, alpha, gamma, mem_size, epsilon, batch_size, num_agents, act_per_agent,
                  replace_target=30000, input_dims=(210, 160, 4), q_next_dir="tmp/vertical/q_next", q_eval_dir="tmp/vertical/q_eval"):
+
         self.num_agents = num_agents
         self.act_per_agent = act_per_agent
         self.input_dims = input_dims
@@ -162,10 +155,15 @@ class Agent(object):
 
         self.q_next = DeepQNetwork(alpha, self.n_actions, input_dims=input_dims,
                                    name='q_next', chkpt_dir=q_next_dir)
+        self.create_memory()
+        self.all_list = []
+        for j in it.product(tuple(self.action_space), repeat = self.num_agents):
+            self.all_list.append(j)
 
-        self.state_memory = np.zeros((self.mem_size, *input_dims))
+    def create_memory(self):
+        self.state_memory = np.zeros((self.mem_size, *self.input_dims))
         
-        self.new_state_memory = np.zeros((self.mem_size, *input_dims))
+        self.new_state_memory = np.zeros((self.mem_size, *self.input_dims))
         self.action_memory = np.zeros((self.mem_size, self.n_actions),
                                       dtype=np.int8)
         self.reward_memory = np.zeros(self.mem_size)
@@ -175,9 +173,6 @@ class Agent(object):
         h_init = np.zeros((1, self.LSTM_DIM), np.float32)
         self.state_out = (c_init, h_init)
         
-        self.all_list = []
-        for j in it.product(tuple(self.action_space), repeat = self.num_agents):
-            self.all_list.append(j) 
 
 
     def action_hot_encoder(self, actions, all_list):
@@ -338,7 +333,7 @@ class Agent(object):
             self.q_eval.writer.flush()
         else:
             _ = self.q_eval.sess.run(self.q_eval.train_op,
-                                        feed_dict={self.q_eval.states: state_batch,
+                                     feed_dict={self.q_eval.states: state_batch,
                                             self.q_eval.actions: action_batch,
                                             self.q_eval.q_target: q_target,
                                             self.q_eval.seq_len: self.seq_length,

@@ -212,7 +212,7 @@ class Agent(object):
 
     def choose_action(self, state):
         rand = np.random.random()
-        state_in = (np.zeros((1, self.LSTM_DIM)),np.zeros((1, self.LSTM_DIM)))
+        #state_in = (np.zeros((1, self.LSTM_DIM)),np.zeros((1, self.LSTM_DIM)))
         if rand < self.epsilon:
             value_list = []
             for i in range(self.num_agents):
@@ -275,6 +275,15 @@ class Agent(object):
 
         return seq
 
+    def get_q_vals(state, action):
+
+        return self.q_eval.sess.run(self.q_eval.Q_values, 
+                             feed_dict={self.q_eval.states:state,
+                                        self.q_eval.state_in: state_in,
+                                        self.q_eval.seq_len: self.seq_length,
+                                        self.q_eval.batch_size: 1} 
+
+
     def learn(self):
         if self.mem_cntr % self.replace_target == 0:
             self.update_graph()
@@ -335,7 +344,7 @@ class Agent(object):
             self.q_eval.writer.flush()
 
     def test(self, state):
-        state_in = (np.zeros((1, self.LSTM_DIM)),np.zeros((1, self.LSTM_DIM)))
+        #state_in = (np.zeros((1, self.LSTM_DIM)),np.zeros((1, self.LSTM_DIM)))
         actions = self.q_eval.sess.run(self.q_eval.Q_values,
                                        feed_dict={self.q_eval.states: state,
                                                   self.q_eval.state_in: state_in,

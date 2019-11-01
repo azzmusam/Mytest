@@ -31,6 +31,7 @@ class SumoHelper(object):
             self._generate_sumocfg_file()
             self._generate_route_file(seed)
 
+
     def scenario_check(self, scenario):
         """
         Checks if the scenario is well-defined and usable by seeing if all
@@ -76,6 +77,7 @@ class SumoHelper(object):
             f.write(setup_string)
             for t, car in enumerate(car_list):
                 if car is not None:
+
                     car_string = '    <vehicle id="' + car + '_' + str(t) + \
                                  '" route="' + car + '" depart="' + str(t) + \
                                  '" />\n'
