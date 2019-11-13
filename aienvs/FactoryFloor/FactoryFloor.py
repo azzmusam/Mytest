@@ -3,6 +3,7 @@ from gym import spaces
 from aienvs.FactoryFloor.FactoryFloorRobot import FactoryFloorRobot
 from aienvs.FactoryFloor.FactoryFloorTask import FactoryFloorTask
 from aienvs.FactoryFloor.FactoryFloorState import FactoryFloorState
+from aienvs.gym.FixedActionsSpace import FixedActionsSpace
 from aienvs.Environment import Env
 from numpy import set_printoptions, transpose, zeros
 from numpy import array, dstack, ndarray
@@ -13,9 +14,9 @@ from numpy.random import seed as npseed
 from numpy.random import choice as weightedchoice
 import time
 import random
-from aiagents.FixedActionsSpace import FixedActionsSpace
 import pdb
 import numbers
+from aienvs.gym.CustomObjectSpace import CustomObjectSpace
 
 USE_PossibleActionsSpace = False
 
@@ -32,6 +33,7 @@ class FactoryFloor(Env):
                 'tasks': [ [1, 1] ],  # initial task positions
                 'P_action_succeed':{'LEFT':0.9, 'RIGHT':0.9, 'ACT':0.5, 'UP':0.9, 'DOWN':0.9},
                 'P_task_appears':0.99,  # P(new task appears in step) 
+                'N_task_appears': 1,
                 'allow_robot_overlap':False,
                 'allow_task_overlap':False,
                 'seed':None,
@@ -56,17 +58,17 @@ class FactoryFloor(Env):
         """
         self._parameters = copy.deepcopy(self.DEFAULT_PARAMETERS)
         self._parameters.update(parameters)
-        self._random = Random(x=self._parameters['seed'])
-        if isinstance(self._parameters['seed'], numbers.Number):
-            npseed(self._parameters['seed'])
-        self._map = Map(self._parameters['map'], self._parameters['P_task_appears'], self._random)
+        #self._random = SystemRandom()#Random(x=self._parameters['seed'])
+
+        map = Map(self._parameters['map'], self._parameters['P_task_appears'])
         # use "set" to get rid of weird wrappers
         # if set(self._parameters['P_action_succeed'].keys()) != set(FactoryFloor.ACTIONS.values()):
         #    raise ValueError("P_action_succeed must contain values for all actions")
+        self.seed(self._parameters['seed'])
 
-        robots = []
+        robots = {}
         tasks = []
-        self._state = FactoryFloorState(robots, tasks)
+        self._state = FactoryFloorState(robots, tasks, map)
 
         # TODO: remove code duplication
         for item in self._parameters['robots']:
@@ -91,23 +93,25 @@ class FactoryFloor(Env):
             else:
                 raise ValueError("Unknown task position, expected list but got " + str(type(pos)))
             self._state.addTask(task)
-                
     
         if not USE_PossibleActionsSpace:
-            self._actSpace = spaces.Dict({robot.getId():spaces.Discrete(len(self.ACTIONS)) for robot in self._state.robots})
-            seed = self._random.randint(0, 10 * len(self._state.robots))
-            self._actSpace.seed(seed)
+            self._actSpace = spaces.Dict({robotId:spaces.Discrete(len(self.ACTIONS)) for robotId in self._state.robots.keys()})
+            #seed = self._random.randint(0, 10 * len(self._state.robots))
+            #self._actSpace.seed(seed)
 
     # Override
     def step(self, actions:dict):
-        if self._random.random() < self._map.getTaskProbability():
-            self._addTask()
-
         global_reward = self._computePenalty()
         if(actions):
-            for robot in self._state.robots:
+            for robot in self._state.robots.values():
                 self._applyAction(robot, actions[robot.getId()])
         global_reward -= self._computePenalty()
+ 
+        idx=0
+        while( idx < int(self._parameters["N_task_appears"]) ):
+            if random.random() < self._state.getMap().getTaskProbability():
+                self._addTask()
+            idx+=1
 
         self._state.step += 1
         done = (self._parameters['steps'] <= self._state.step)
@@ -142,6 +146,9 @@ class FactoryFloor(Env):
 
     def seed(self, seed):
         self._parameters['seed'] = seed
+        if isinstance(self._parameters['seed'], numbers.Number):
+            npseed(self._parameters['seed'])
+        random.seed(seed)
 
     def getState(self) -> FactoryFloorState:
         return self._state
@@ -151,18 +158,15 @@ class FactoryFloor(Env):
 
     @property
     def observation_space(self):
-        """
-        Returns 2 layers: first is for the robot positions, second for the task positions
-        """
-        obsSpace = spaces.MultiDiscrete([2, self._map.getWidth(), self._map.getHeight()]) 
-        obsSpace.seed(self._parameters['seed'])
-        return obsSpace
+        # obsSpace = spaces.MultiDiscrete([2, self._map.getWidth(), self._map.getHeight()]) 
+        # obsSpace.seed(self._parameters['seed'])
+        return CustomObjectSpace(self._state);
 
     @property
     def action_space(self):
         if USE_PossibleActionsSpace:
-            actSpace = spaces.Dict({robot.getId():PossibleActionsSpace(self, robot) 
-                for robot in self._state.robots})
+            actSpace = spaces.Dict({robotId:PossibleActionsSpace(self, robot) 
+                for robotId, robot in self._state.robots.items()})
         else:        
             actSpace = self._actSpace
         return actSpace
@@ -173,7 +177,7 @@ class FactoryFloor(Env):
         """
         @return: the map of this floor
         """
-        return copy.deepcopy(self._map)
+        return copy.deepcopy(self._state.getMap())
 
     def getPart(self, area:ndarray):  # -> FactoryFloor
         """
@@ -182,14 +186,17 @@ class FactoryFloor(Env):
         with Map#getPart(area) of this map, and only those bots and tasks that 
         are in that area. The new factoryfloor is completely independent of this floor.
         """
+        if( int(self._parameters["N_task_appears"]) > 1 ):
+            raise Exception("Multiple task appears not supported for getting part of the map")
+
         parameters = copy.deepcopy(self._parameters)
-        newmap = self._map.getPart(area)
+        newmap = self._state.getMap().getPart(area)
         parameters['map'] = newmap.getFullMap()
         parameters['robots'] = [\
             { 'id':robot.getId(), 'pos':robot.getPosition().tolist() }\
-            for robot in self._state.robots if self._map.isInside(robot.getPosition())]
+            for robot in self._state.robots.values() if self._state.getMap().isInside(robot.getPosition())]
         parameters['tasks'] = [task.getPosition().tolist() \
-            for task in self._state.tasks if self._map.isInside(task.getPosition())]
+            for task in self._state.tasks if self._state.getMap().isInside(task.getPosition())]
         parameters['P_task_appears'] = newmap.getTaskProbability()
         return FactoryFloor(parameters)
   
@@ -214,9 +221,10 @@ class FactoryFloor(Env):
     ########## Private functions ##########################
 
     def _createBitmap(self):
-        bitmapRobots = zeros((self._map.getWidth(), self._map.getHeight()))
-        bitmapTasks = zeros((self._map.getWidth(), self._map.getHeight()))
-        for robot in self._state.robots:
+        map = self._state.getMap()
+        bitmapRobots = zeros((map.getWidth(), map.getHeight()))
+        bitmapTasks = zeros((map.getWidth(), map.getHeight()))
+        for robot in self._state.robots.values():
             pos = robot.getPosition()
             bitmapRobots[pos[0], pos[1]] += 1
 
@@ -230,24 +238,29 @@ class FactoryFloor(Env):
         """
         robot tries to execute given action.
         @param robot a FactoryFloorRobot
-        @param action the ACTION number. If ACT, then the robot executes all
-        tasks that are in the tasks list and at the robot's location 
+        @param action the ACTION number. 
         """
         actstring = self.ACTIONS.get(action)
+        randNo = random.random()
         try:
-            if self._random.random() > self._parameters['P_action_succeed'][actstring]:
-                return False
-        except:
-            pdb.post_mortem()
+            # first check for individual success probabilities
+            pSucceed = self._parameters['P_action_succeed'][robot.getId()][actstring]
+        except KeyError:
+            # then use common ones
+            pSucceed = self._parameters['P_action_succeed'][actstring]
+
+        if randNo > pSucceed:
+            return False
 
         pos = robot.getPosition()
         
         if actstring == "ACT":
-            task = self._getTask(pos)
+            newpos=pos
+            task = self._getTask(newpos)
             if task != None:
                 self._state.tasks.remove(task)
-                logging.debug("removed " + str(task))
-        else:  # move
+                #logging.debug("removed " + str(task))
+        else: # move
             newpos = self._newPos(pos, action)
             if self._isFree(newpos):
                 robot.setPosition(newpos)
@@ -276,7 +289,7 @@ class FactoryFloor(Env):
         @return:random map position (x,y) that is not occupied by robot or wall.
         """
         while True:
-            pos = self._map.getRandomPosition()
+            pos = self._state.getMap().getRandomPosition()
             if self._isFree(pos):
                 return pos
 
@@ -285,7 +298,7 @@ class FactoryFloor(Env):
         @param position a numpy ndarray [x,y] that must be checked
         @return: true iff a robot occupies position
         """        
-        for robot in self._state.robots:
+        for robot in self._state.robots.values():
             if (position == robot.getPosition()).all():
                 return True
         return False
@@ -296,14 +309,16 @@ class FactoryFloor(Env):
         so it must be on the map and not on a wall and possibly
         not already containing a robot
         """
-        return self._map.isInside(pos) and self._map.get(pos) != "*" \
+        map = self._state.getMap()
+        return map.isInside(pos) and map.get(pos) != "*" \
             and (self._parameters['allow_robot_overlap'] or not(self._isRobot(pos)))
         
     def _addTask(self):
         """
         Add one new task to the task pool
         """
-        poslist = self._map.getTaskPositions()
+        themap = self._state.getMap()
+        poslist = list(themap.getTaskPositions())
         if not self._parameters['allow_task_overlap']:
             if len(self._state.tasks) >= len(poslist):
                 return
@@ -311,7 +326,8 @@ class FactoryFloor(Env):
         # samplingSpace = spaces.MultiDiscrete([self._parameters['x_size'], self._parameters['y_size']])
         while True:  # do until newpos is not yet tasked, or task overlap allowed
             # work around numpy bug when list contains tuples
-            i = weightedchoice(list(range(len(poslist))), 1, p=self._map.getTaskWeights())[0]
+            weights = list(themap.getTaskWeights())
+            i = weightedchoice(list(range(len(poslist))), 1, p=weights)[0]
             newpos = poslist[i]
             if self._parameters['allow_task_overlap'] or self._getTask(newpos) == None:
                 break;

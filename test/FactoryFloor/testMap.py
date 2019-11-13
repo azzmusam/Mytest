@@ -1,6 +1,6 @@
 from aienvs.FactoryFloor.Map import Map
-from .LoggedTestCase import LoggedTestCase
-from numpy import array
+from test.LoggedTestCase import LoggedTestCase
+from numpy import array, array_equal
 
 
 class TestMap(LoggedTestCase):
@@ -37,3 +37,7 @@ class TestMap(LoggedTestCase):
         self.assertEquals('5', part.get(array([0, 0])))
         self.assertEquals(0.8 * 5 / (2 + 5), part.getTaskProbability())
 
+    def test_smoke_getRandomPos(self):
+        map = Map(['abc', 'ABC', '25.'], .8)
+        p1 = map.getRandomPosition()
+        

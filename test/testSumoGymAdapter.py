@@ -1,10 +1,6 @@
 import sys
 import os
 import unittest
-import aienvs
-from aiagents.multi.BasicComplexAgent import BasicComplexAgent
-from aiagents.single.RandomAgent import RandomAgent
-from aiagents.single.PPO.PPOAgent import PPOAgent
 import logging
 import yaml
 from test.LoggedTestCase import LoggedTestCase
@@ -51,51 +47,7 @@ class testSumoGymAdapter(LoggedTestCase):
             logging.debug("Step " + str(i))
             i += 1
             obs, global_reward, done, info = env.step(env.action_space.sample())
-
-    def test_random_agent(self):
-        logging.info("Starting test_random_agent")
-        dirname = os.path.dirname(__file__)
-        filename = os.path.join(dirname, "configs/new_traffic_loop_ppo.yaml")
-
-        with open(filename, 'r') as stream:
-            try:
-                parameters = yaml.safe_load(stream)['parameters']
-            except yaml.YAMLError as exc:
-                logging.error(exc)
-
-        env = SumoGymAdapter(parameters)
-        env.reset()
-
-        randomAgents = []
-        for intersectionId in env.action_space.spaces.keys():
-            randomAgents.append(RandomAgent(intersectionId, env))
-
-        complexAgent = BasicComplexAgent(randomAgents)
-        experiment = Experiment(complexAgent, env, parameters['max_steps'])
-        experiment.run()
-
-    def test_PPO_agent(self):
-        logging.info("Starting test_PPO_agent")
-        dirname = os.path.dirname(__file__)
-        filename = os.path.join(dirname, "configs/new_traffic_loop_ppo.yaml")
-
-        with open(filename, 'r') as stream:
-            try:
-                parameters = yaml.safe_load(stream)['parameters']
-            except yaml.YAMLError as exc:
-                logging.error(exc)
-
-        env = SumoGymAdapter(parameters)
-        env.reset()
-
-        PPOAgents = []
-        for intersectionId in env.action_space.spaces.keys():
-            PPOAgents.append(PPOAgent(intersectionId, env, parameters))
-
-        complexAgent = BasicComplexAgent(PPOAgents)
-        experiment = Experiment(complexAgent, env, parameters['max_steps'])
-        experiment.run()
-
+ 
         
 if __name__ == '__main__':
     unittest.main()

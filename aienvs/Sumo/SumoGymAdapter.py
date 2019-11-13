@@ -23,7 +23,6 @@ import yaml
 from aienvs.Sumo.statics_control import *
 
 
-
 class SumoGymAdapter(Env):
     """
     An adapter that makes Sumo behave as a proper Gym environment.
@@ -164,10 +163,11 @@ class SumoGymAdapter(Env):
     def close(self):
         self.__del__()
 
-    # TODO: Wouter: this needs to return a space and be somehow unified with gym.spaces
     @property
     def observation_space(self):
-        return self._state.update_state()
+        size = self._state.size()
+        return Box(low=0, high=np.inf, shape=(size[0], size[1]), dtype=np.int32)
+        # return self._state.update_state()
 
     @property
     def action_space(self):

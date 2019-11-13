@@ -3,13 +3,13 @@
 # (see 'man sbatch' for more information on setting these parameters)
 
 # The default partition is the 'general' partition
-#SBATCH --partition=influence,general
+#SBATCH --partition=influence
 
 # The default Quality of Service is the 'short' QoS (maximum run time: 4 hours)
-#SBATCH --qos=short
+#SBATCH --qos=long
 
 # The default run (wall-clock) time is 1 minute
-#SBATCH --time=1:00:00
+#SBATCH --time=14:00:00
 
 # The default number of parallel tasks per job is 1
 #SBATCH --ntasks=1
@@ -25,8 +25,7 @@
 
 # Your job commands go below here
 
-echo $1 $2 $3
-echo "PYTHONPATH: "$PYTHONPATH
+echo $1
+srun $1
 
-srun python3 MctsExperiment.py $1 $2 $3
-mv slurm-${SLURM_JOB_ID}.out ./$3/${SLURM_JOB_ID}/stdout.txt
+mv slurm-${SLURM_JOB_ID}.out $2/slurm-${SLURM_JOB_ID}.out

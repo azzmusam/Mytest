@@ -4,8 +4,8 @@ import pickle
 from aienvs.FactoryFloor.FactoryFloorState import encodeStateAsArray
 import numpy as np
 
-def preprocess(dirname, width, height, robotIdList):
-    all_pickle_files = glob.glob( dirname + '**/*.pickle', recursive=True )
+def preprocess(dirname, robotIdList):
+    all_pickle_files = glob.glob( dirname + '/**/*.pickle', recursive=True )
 
     states = []
     actions = []
@@ -19,7 +19,7 @@ def preprocess(dirname, width, height, robotIdList):
                     data=pickle.load(instream)
                     for robotId in robotIdList:
                         actions.append(data.get("actions").get(robotId))
-                        states.append(encodeStateAsArray(data.get("observation"), width, height, robotId))
+                        states.append(encodeStateAsArray(data.get("observation")))
                 except EOFError:
                     break
 
@@ -38,9 +38,10 @@ from keras.layers import Flatten, Dense, Conv2D, MaxPooling2D, Cropping2D, Dropo
 from keras.preprocessing.image import ImageDataGenerator
 from keras.utils import plot_model
 
-def classification_model():
+#need to change def. arg manually for evaluation
+def classification_model(shape=(4,4,4)):
     model = Sequential()
-    model.add(Convolution2D(16,(2,2), input_shape=(4,4,3), activation='relu'))
+    model.add(Convolution2D(16,(2,2), input_shape=shape, activation='relu'))
     model.add(Convolution2D(32,(2,2), activation='relu'))
  #   model.add(Convolution2D(4,(2,2), activation='relu'))
    # model.add(Dropout(0.5))
