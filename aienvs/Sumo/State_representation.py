@@ -820,19 +820,20 @@ class LdmMatrixState(State):
         return self._ldm.getRewardByCorners(self.bottomLeftCoords, self.topRightCoords, local_rewards)
 
     def update_state(self):
-        return self._ldm.getMapSliceByCorners(self.bottomLeftCoords, self.topRightCoords)
+        return self._ldm.getMapSliceByCorners(self.bottomLeftCoords, self.topRightCoords, pixelsPerMeter=None)
 
 
 class FactoredLDMMatrixState(LdmMatrixState):
-    def __init__(self, ldm, data, factored_agents, factored_coords):
+    def __init__(self, ldm, data, factored_agents, factored_coords, pixelsPerMeter):
         LdmMatrixState.__init__(self, ldm, data, type='byCorners')
         self.factored_agents = factored_agents
         self.factored_coords = factored_coords
+        self.pixelsPerMeter = pixelsPerMeter
 
     def update_state(self):
         state_graph = {}
         for key in self.factored_coords.keys():
-            state_graph[key] = self._ldm.getMapSliceByCorners(self.factored_coords[key][0], self.factored_coords[key][1])
+            state_graph[key] = self._ldm.getMapSliceByCorners(self.factored_coords[key][0], self.factored_coords[key][1], self.pixelsPerMeter[key])
         return state_graph, super().update_state()
 
     def update_reward(self, local_rewards=True):

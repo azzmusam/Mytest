@@ -42,7 +42,7 @@ if __name__ == '__main__':
     logging.info("Starting test_traffic_new")
 
 
-    with open("configs/vertical_config.yaml", 'r') as stream:
+    with open("configs/multi_hor_config.yaml", 'r') as stream:
         try:
             parameters = yaml.safe_load(stream)['parameters']
         except yaml.YAMLError as exc:
@@ -51,21 +51,12 @@ if __name__ == '__main__':
     env = SumoGymAdapter(parameters)
 
     mem_size =30000
-
+    i=0
     agent = Agent(gamma=0.99, epsilon=1.0, alpha=0.00025, input_dims=(84,84,1),
                   act_per_agent=2, num_agents=2, mem_size=mem_size, batch_size=32)
 
-    maximum_time_steps = 410000
+    maximum_time_steps = 1000000
     stack_size = 1
-    i = 0
-    k = 0
-    j = [m for m in range(590000, 1010000, 10000)]
-    path = os.getcwd()
-    filename = 'vertical_deepqnet.ckpt-590000'
-    q_eval_checkpoint = os.path.join(*[path, 'tmp', 'vertical','q_eval', filename])
-    q_next_checkpoint = os.path.join(*[path, 'tmp', 'vertical','q_next', filename])
-    agent.load_models(q_eval_checkpoint, q_next_checkpoint)
-    print('LOADED CHECKPOINT:', filename)
 
     print("Loading up the agent's memory with random gameplay")
     while agent.mem_cntr < mem_size:
@@ -112,7 +103,5 @@ if __name__ == '__main__':
             agent.upgrade()
 
             if i % 10000==0:
-                agent.save_models(j[k])
-                k +=1
-
+                agent.save_models(i)
     env.close()

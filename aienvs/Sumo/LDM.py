@@ -169,9 +169,9 @@ class ldm():
 
         return self._computeReward( filteredVehicles )
 
-    def getMapSliceByCorners( self, bottomLeftCoords, topRightCoords ):
-        bottomLeftMatrixCoords = self._coordMetersToArray( bottomLeftCoords )
-        topRightMatrixCoords = self._coordMetersToArray( topRightCoords )
+    def getMapSliceByCorners( self, bottomLeftCoords, topRightCoords, pixelsPerMeter: list):
+        bottomLeftMatrixCoords = self._coordMetersToArray( bottomLeftCoords, pixelsPerMeter=pixelsPerMeter)
+        topRightMatrixCoords = self._coordMetersToArray( topRightCoords, pixelsPerMeter=pixelsPerMeter)
         return self._arrayMap[bottomLeftMatrixCoords[0]:(topRightMatrixCoords[0]), bottomLeftMatrixCoords[1]:(topRightMatrixCoords[1])].transpose()[::-1]
 
     def getMapSliceByCenter( self, centerCoords, widthInMeters, heightInMeters ):
@@ -317,14 +317,18 @@ class ldm():
             print( self.netBoundaryMeters[1] )
             print( self.netBoundaryMeters[0] )
 
-        self._arrayMap=np.zeros( self._coordMetersToArray(tuple(( self.netBoundaryMeters[1][0], self.netBoundaryMeters[1][1] )) ) )
+        self._arrayMap=np.zeros( self._coordMetersToArray(tuple(( self.netBoundaryMeters[1][0], self.netBoundaryMeters[1][1] )), pixelsPerMeter=None ) )
 
     def _resetMap( self ):
         self._arrayMap = np.zeros( self._arrayMap.shape )
 
-    def _coordMetersToArray( self, *coordsInMeters ):
-        arrayX = round( (coordsInMeters[0][0] - self.netBoundaryMeters[0][0]) * self._pixelsPerMeterWidth - 0.5 )
-        arrayY = round( (coordsInMeters[0][1] - self.netBoundaryMeters[0][1]) * self._pixelsPerMeterHeight - 0.5 )
+    def _coordMetersToArray( self, *coordsInMeters, pixelsPerMeter):
+        if pixelsPerMeter==None:
+            arrayX = round( (coordsInMeters[0][0] - self.netBoundaryMeters[0][0]) * self._pixelsPerMeterWidth - 0.5 )
+            arrayY = round( (coordsInMeters[0][1] - self.netBoundaryMeters[0][1]) * self._pixelsPerMeterHeight - 0.5 )
+        else:
+            arrayX = round( (coordsInMeters[0][0] - self.netBoundaryMeters[0][0]) * pixelsPerMeter[0] - 0.5 )
+            arrayY = round( (coordsInMeters[0][1] - self.netBoundaryMeters[0][1]) * pixelsPerMeter[1] - 0.5 )
         return [arrayX, arrayY]
 
     def _addVehicleSubscription(self, vehID):
@@ -332,7 +336,7 @@ class ldm():
 
     def _updateMapWithVehicles( self, floatingCarData ):
         for vehCoords in floatingCarData:
-            vehCoordsInArray=self._coordMetersToArray(vehCoords)
+            vehCoordsInArray=self._coordMetersToArray(vehCoords, pixelsPerMeter=None)
             try:
                 self._arrayMap[vehCoordsInArray[0], vehCoordsInArray[1]] = self._arrayMap[vehCoordsInArray[0], vehCoordsInArray[1]] + 1
             except IndexError as error:
@@ -469,7 +473,7 @@ class ldm():
             elif lights[index] == 'r':
                 val = 0.2
 
-            arrayPosition = self._coordMetersToArray( position[index] )
+            arrayPosition = self._coordMetersToArray( position[index], pixelsPerMeter=None )
             self._arrayMap[arrayPosition[0], arrayPosition[1]] += val
             index += 1
             

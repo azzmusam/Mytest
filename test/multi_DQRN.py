@@ -12,7 +12,7 @@ class DeepQNetwork(object):
     def __init__(self, lr, n_actions, name, fc1_dims=512, LSTM_DIM=256,
                  input_dims=(210, 160, 4), chkpt_dir="tmp/dqn"):
         config = tf.ConfigProto()
-        config.gpu_options.visible_device_list= '2,3'
+        config.gpu_options.visible_device_list= '0,1'
         config.gpu_options.allow_growth = True
         #config.gpu_options.per_process_gpu_memory_fraction = 0.5
         #config.log_device_placement = True
@@ -27,12 +27,12 @@ class DeepQNetwork(object):
         self.build_network()
         self.sess.run(tf.global_variables_initializer())
         self.saver = tf.train.Saver(max_to_keep=150)
-        self.checkpoint_file = os.path.join(chkpt_dir, "vertical_deepqnet.ckpt")
+        self.checkpoint_file = os.path.join(chkpt_dir, "horizontal_deepqnet.ckpt")
         self.params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
                                         scope=self.name)
         self.write_op = tf.summary.merge_all()
         dirname = os.path.dirname(__file__)
-        self.log = os.path.join(*[dirname, 'tmp', 'vertical','log_dir', self.name])
+        self.log = os.path.join(*[dirname, 'tmp', 'horizontal','log_dir', self.name])
         if os.path.exists(self.log):
             print("output_results: ", str(self.log))
         else:
@@ -134,7 +134,7 @@ class DeepQNetwork(object):
 
 class Agent(object):
     def __init__(self, alpha, gamma, mem_size, epsilon, batch_size, num_agents, act_per_agent,
-                 replace_target=30000, input_dims=(210, 160, 4), q_next_dir="tmp/vertical/q_next", q_eval_dir="tmp/vertical/q_eval"):
+                 replace_target=30000, input_dims=(210, 160, 4), q_next_dir="tmp/horizontal/q_next", q_eval_dir="tmp/horizontal/q_eval"):
 
         self.num_agents = num_agents
         self.act_per_agent = act_per_agent
@@ -375,5 +375,3 @@ class Agent(object):
 
         for t, e in zip(t_params, e_params):
             self.q_eval.sess.run(tf.assign(t, e))
-
-

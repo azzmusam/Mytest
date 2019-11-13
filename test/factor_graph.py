@@ -1,0 +1,131 @@
+import os
+import sys
+import numpy as np
+from improved_DQRN import Agent
+import itertools as it
+import pdb
+import collections
+import tensorflow as tf
+
+class factor_graph():
+    
+    def __init__(self, factored_graph, num_agents, factored_agent_type, modelnr):
+        self.factored_graph = factored_graph
+        self.num_agents = num_agents
+        self.factored_agent_type = factored_agent_type
+        self.modelnr = modelnr
+        self.num_factors = len(factored_graph.keys())
+        self.act_per_agent = 2
+        self.action_space = [i for i in range(self.act_per_agent)]
+        self.num_actions = self.act_per_agent**self.num_agents
+        self.generate_agents()
+        self.load_models()
+        self.set_action_list()
+
+    def set_action_list(self):
+        ''' This produces a tuple of actions of each agent in the form of (0,0,0,0) or 
+            (0,1,0,1) where 0 and 1s are the actions and lenth of the tuple is equal 
+            to the number of agents'''
+        self.action_list = []
+        for i in it.product(self.action_space, repeat= self.num_agents):
+            self.action_list.append(i)
+
+    def get_factored_Q_val(self, state_graph):
+        '''Outputs Q value for each of the factored graph/agents'''
+        q_array= {}
+        for keys in self.factored_agent_type.keys():
+            q_array[keys] = self.get_q_value(self.factored_agent_type[keys], state_graph[keys])
+        return q_array
+
+
+    def generate_agents(self):
+        '''Generates q_network for factored agents which in general is two agents per factor'''
+        self.Q_function_dict = {} 	
+        mem_size = None
+        hor_q_func = Agent(gamma=0.99, epsilon=1.0, alpha=0.00025, input_dims=(84,84,1),
+                       act_per_agent=2, num_agents=2, mem_size=mem_size, batch_size=32,
+                       replace_target=30000, name="q_eval", q_next_dir="tmp/six/q_next", q_eval_dir="tmp/six/q_eval", test=True)
+        
+        #ver_q_func = Agent(gamma=0.99, epsilon=1.0, alpha=0.00025, input_dims=(84,84,1),
+         #              act_per_agent=2, num_agents=2, name="q_eval", mem_size=mem_size, batch_size=32, replace_target=30000, q_next_dir="tmp/six/q_next", q_eval_dir="tmp/six/q_eval", test=True)
+        self.Q_function_dict['horizontal'] = hor_q_func
+        #self.Q_function_dict['vertical'] = ver_q_func
+
+    def model_load_type(self, modeltype:str, modelnr: str):
+        path = os.getcwd()
+        modelname = 'tmp/'+ str(modeltype) + '/q_eval/' + str(modeltype) + '_deepqnet.ckpt-' + str(modelnr)
+        return os.path.join(path, modelname)
+
+    def load_models(self):
+        hor_checkpoint_file = self.model_load_type(modelnr=110000, modeltype='multi')
+        ver_checkpoint_file = self.model_load_type(modelnr=110000, modeltype='vertical')
+        self.Q_function_dict['horizontal'].load_models(hor_checkpoint_file)
+        #self.Q_function_dict['vertical'].load_models(ver_checkpoint_file)
+
+    def reset(self):
+        for keys in self.Q_function_dict.keys():
+            self.Q_function_dict[keys].reset()
+   
+    def get_q_value(self, key, local_state):
+        '''returns q_value for the factored agents based on their local state'''
+        q_value = self.Q_function_dict[key].get_qval(local_state)
+        return q_value	
+
+    def store_exp(self, factored_exp):
+        '''Used to store transitions (state, action, reward, next_state, terminal )'''
+        for key in factored_exp.keys():
+            self.Q_function[key].store_transition(factored_exp[key][0], factored_exp[key][1], factored_exp[key][2], factored_exp[key][3], factored_exp[key][4])
+
+    def choose_action(self, factored_state):
+        '''choose action based on the local state'''
+        actions = {}
+        for keys in self.factored_graph.keys():
+            actions[keys] = self.Q_function_dict[keys].choose_action(factored_state[keys])
+        return actions
+
+    def agents_to_action(self, agent_list, actions):
+        tup = []
+        for idx, val in enumerate(agent_list):
+            tup.append(actions[val])
+        return tuple(tup)
+
+    def b_coord(self, q_array):
+        sum_q_value = []
+        action_tuple = [i for i in it.product((0,1), repeat=2)]
+        for i in range(len(self.action_list)):
+            q_val = 0
+            all_actions = self.action_list[i]
+            for keys in self.factored_graph.keys():
+                act_tup = self.agents_to_action(self.factored_graph[keys], all_actions)
+                for key, val in enumerate(action_tuple):
+                    if act_tup == val:
+                        index = key
+                        break
+                q_val += q_array[keys][0][index]
+            sum_q_value.append(q_val)
+        idx = np.argmax(sum_q_value)
+        best_action = self.action_list[idx]
+        sumo_act = self.act_to_dict(best_action)
+        return  sum_q_value, best_action, sumo_act
+  
+    def act_to_dict(self, best_action):
+        action = collections.OrderedDict()
+        for i in range(len(best_action)):
+            action[str(i)]= best_action[i]
+        return action           
+
+ 
+if __name__=="__main__":
+    import numpy as np
+    factored_agents= {0: ['0','1'],
+                      1: ['1','2'],
+                      2: ['2','3'],
+                      3: ['3','0']}
+    
+    fg = factor_graph(factored_agents)
+    q_array = np.random.randint(45, size=(4,4))
+
+    fg.brute_coordination(q_array)     
+        
+            
+                

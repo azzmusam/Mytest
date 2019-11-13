@@ -11,8 +11,8 @@
  <node id="8" x="500.0" y="500.0" type="priority"/>
  <node id="9" x="1000.0" y="500.0" type="priority"/>
  <node id="10" x="1500.0" y="0.0" type="priority"/>
- <node id="11" x="-500.0" y="500.0" type="priority"/>
- <node id="12" x="0.0" y="1000.0" type="priority"/>
+ <node id="11" x="-500.0" y="-500.0" type="priority"/>
+ <node id="12" x="0.0" y="-1000.0" type="priority"/>
  <node id="13" x="500" y="-1000.0" type="priority"/>
  <node id="14" x="1000.0" y="-1000.0" type="priority"/>
  <node id="15" x="1500.0" y="-500.0" type="priority"/>

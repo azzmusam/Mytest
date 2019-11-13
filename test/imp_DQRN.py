@@ -9,10 +9,11 @@ import pdb
 
 class DeepQNetwork(object):
 
-    def __init__(self, lr, n_actions, name, fc1_dims=512, LSTM_DIM=256,
+    def __init__(self, lr, n_actions, name, graph, fc1_dims=512, LSTM_DIM=256,
                  input_dims=(210, 160, 4), chkpt_dir="tmp/dqn"):
         self.lr = lr
         self.name = name
+        self.graph = graph
         config = tf.ConfigProto()
         config.gpu_options.visible_device_list = "2,3"
         #config.gpu_options.allow_growth = True
@@ -22,14 +23,19 @@ class DeepQNetwork(object):
         self.fc1_dims = fc1_dims
         self.chkpt_dir = chkpt_dir
         self.input_dims = input_dims
-        self.sess = tf.Session(config=config)
         self.build_network()
-        self.sess.run(tf.global_variables_initializer())
+        if self.graph == 'hor_graph':
+            self.sess = tf.Session(graph=self.hor_graph , config=config)
+            with tf.Session(graph = self.hor_graph) as sess:
+                sess.run(tf.global_variables_initializer())
+        else:
+            self.sess = tf.Session(graph=self.ver_graph , config=config)
+            with tf.Session(graph = self.ver_graph) as sess:
+                sess.run(tf.global_variables_initializer())
         self.checkpoint_file = os.path.join(chkpt_dir, "deepqnet.ckpt")
-        self.saver = tf.train.Saver(max_to_keep=100)
-        self.params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
-                                        scope=self.name)
-        self.write_op = tf.summary.merge_all()
+        #self.params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
+         #                               scope=self.name)
+        #self.write_op = tf.summary.merge_all()
         #dirname = os.path.dirname(__file__)
         #self.log = os.path.join(*[dirname, 'tmp', 'log_dir', self.name])
         #if os.path.isdir(self.log):
@@ -50,21 +56,22 @@ class DeepQNetwork(object):
             
 
     def build_network(self):
+        if self.graph=='hor_graph':
+            with tf.Graph().as_default() as self.hor_graph:
+                with tf.variable_scope(self.name):
+                    self.states = tf.placeholder(tf.float32, shape=[None, *self.input_dims],
+                                                name='states') 
+                    self.actions = tf.placeholder(tf.float32, shape=[None, self.n_actions],
+                                                  name='action_taken')
+                    self.q_target = tf.placeholder(tf.float32, shape=[None],
+                                               name='q_value')
+                    self.seq_len = tf.placeholder(tf.int32, name='sequence_length')
+                    self.batch_size = tf.placeholder(tf.int32, name='batch_size')
 
-        with tf.variable_scope(self.name):
-            self.states = tf.placeholder(tf.float32, shape=[None, *self.input_dims],
-                                        name='states') 
-            self.actions = tf.placeholder(tf.float32, shape=[None, self.n_actions],
-                                          name='action_taken')
-            self.q_target = tf.placeholder(tf.float32, shape=[None],
-                                           name='q_value')
-            self.seq_len = tf.placeholder(tf.int32, name='sequence_length')
-            self.batch_size = tf.placeholder(tf.int32, name='batch_size')
-
-            # Create placeholders to input the hidden state values
-            c_in = tf.placeholder(tf.float32, [None, self.LSTM_DIM], name='cell_state')
-            h_in = tf.placeholder(tf.float32, [None, self.LSTM_DIM], name='h_state')
-            self.state_in = tf.nn.rnn_cell.LSTMStateTuple(c_in, h_in)
+                # Create placeholders to input the hidden state values
+                    c_in = tf.placeholder(tf.float32, [None, self.LSTM_DIM], name='cell_state')
+                    h_in = tf.placeholder(tf.float32, [None, self.LSTM_DIM], name='h_state')
+                    self.state_in = tf.nn.rnn_cell.LSTMStateTuple(c_in, h_in)
 
             #self._reward = tf.placeholder(tf.float32, shape=[], name='Reward/Time_step')
             #self.reward_sum = tf.summary.scalar('Reward/Time_step', self._reward)
@@ -75,56 +82,130 @@ class DeepQNetwork(object):
             #self._delay = tf.placeholder(tf.float32, shape=[], name='TotalDelay/Time_step')
             #self.delay_sum = tf.summary.scalar('TotalDelay/Time_step', self._delay)
 
-            conv1 = tf.layers.conv2d(inputs=self.states, filters=16,
-                                     kernel_size=(8, 8), strides=(4,4), name='conv1', padding='VALID',
-                                     kernel_initializer=tf.contrib.layers.variance_scaling_initializer(factor=2),use_bias=True, bias_initializer=tf.constant_initializer(0.1))
+                    conv1 = tf.layers.conv2d(inputs=self.states, filters=16,
+                                             kernel_size=(8, 8), strides=(4,4), name='conv1', padding='VALID',
+                                             kernel_initializer=tf.contrib.layers.variance_scaling_initializer(factor=2),use_bias=True, bias_initializer=tf.constant_initializer(0.1))
             # TensorShape([Dimension(None), Dimension(44), Dimension(39), Dimension(32)])
 
-            conv1_activated = tf.nn.relu(conv1)
+                    conv1_activated = tf.nn.relu(conv1)
 
-            conv2 = tf.layers.conv2d(inputs=conv1_activated, filters=32,
-                                     kernel_size=(4, 4), strides=(2,2), name='conv2', padding='VALID',
-                                     kernel_initializer=tf.contrib.layers.variance_scaling_initializer(factor=2), use_bias=True, bias_initializer=tf.constant_initializer(0.1))
+                    conv2 = tf.layers.conv2d(inputs=conv1_activated, filters=32,
+                                             kernel_size=(4, 4), strides=(2,2), name='conv2', padding='VALID',
+                                             kernel_initializer=tf.contrib.layers.variance_scaling_initializer(factor=2), use_bias=True, bias_initializer=tf.constant_initializer(0.1))
             # TensorShape([Dimension(None), Dimension(21), Dimension(18), Dimension(64)])
 
-            conv2_activated = tf.nn.relu(conv2)
+                    conv2_activated = tf.nn.relu(conv2)
 
             #conv3 = tf.layers.conv2d(inputs=conv2_activated, filters=64,
             #                         kernel_size=(3, 3), strides=1, name='conv3',
                                      #kernel_initializer=tf.contrib.layers.variance_scaling_initializer(factor=2))
             #conv3_activated = tf.nn.relu(conv3)
 
-            n_input = conv2_activated.get_shape().as_list()[1]*conv2_activated.get_shape().as_list()[2]*conv2_activated.get_shape().as_list()[3]
+                    n_input = conv2_activated.get_shape().as_list()[1]*conv2_activated.get_shape().as_list()[2]*conv2_activated.get_shape().as_list()[3]
             
-            conv2_activated = tf.reshape(conv2_activated, [-1, n_input])
+                    conv2_activated = tf.reshape(conv2_activated, [-1, n_input])
             
-            conv2_activated = tf.reshape(conv2_activated, [self.batch_size, self.seq_len, n_input])
+                    conv2_activated = tf.reshape(conv2_activated, [self.batch_size, self.seq_len, n_input])
    
-            lstm_cell = tf.nn.rnn_cell.LSTMCell(self.LSTM_DIM, initializer=tf.contrib.layers.xavier_initializer())
-            outputs, self.cell_state = tf.nn.dynamic_rnn(lstm_cell, conv2_activated, initial_state=self.state_in, dtype=tf.float32, sequence_length=self.seq_len)
+                    lstm_cell = tf.nn.rnn_cell.LSTMCell(self.LSTM_DIM, initializer=tf.contrib.layers.xavier_initializer())
+                    outputs, self.cell_state = tf.nn.dynamic_rnn(lstm_cell, conv2_activated, initial_state=self.state_in, dtype=tf.float32, sequence_length=self.seq_len)
 
-            var1 = tf.get_variable('weights', (self.LSTM_DIM, self.n_actions), initializer=tf.contrib.layers.xavier_initializer(), trainable=True, 
-                                                    regularizer=tf.contrib.layers.l2_regularizer(0.01))
-            var2 = tf.get_variable('biases', (self.n_actions,), trainable=True, initializer=tf.constant_initializer(0.1))
+                    var1 = tf.get_variable('weights', (self.LSTM_DIM, self.n_actions), initializer=tf.contrib.layers.xavier_initializer(), trainable=True, 
+                                                            regularizer=tf.contrib.layers.l2_regularizer(0.01))
+                    var2 = tf.get_variable('biases', (self.n_actions,), trainable=True, initializer=tf.constant_initializer(0.1))
 
-            h = outputs[:,-1,:] 
+                    h = outputs[:,-1,:] 
 
-            self.Q_values = tf.matmul(h, var1) + var2
-            tf.summary.histogram('Q_value', self.Q_values)
+                    self.Q_values = tf.matmul(h, var1) + var2
+                    tf.summary.histogram('Q_value', self.Q_values)
 
-            self.q = tf.reduce_sum(tf.multiply(self.Q_values, self.actions), axis=1)
+                    self.q = tf.reduce_sum(tf.multiply(self.Q_values, self.actions), axis=1)
 
-            self.loss = tf.reduce_mean(tf.square(self.q_target - self.q))
+                    self.loss = tf.reduce_mean(tf.square(self.q_target - self.q))
     
-            self.loss_sum = tf.summary.scalar("Loss", self.loss)
+                    self.loss_sum = tf.summary.scalar("Loss", self.loss)
 
-            self.train_op = tf.train.AdamOptimizer(self.lr).minimize(self.loss)
+                    self.train_op = tf.train.AdamOptimizer(self.lr).minimize(self.loss)
 
-            if self.name == 'q_eval':
-                for var in tf.trainable_variables():
-                    c = var.name[:-2]
-                    with tf.name_scope(c):
-                        self.variable_summaries(var)
+                    if self.name == 'q_eval':
+                        for var in tf.trainable_variables():
+                            c = var.name[:-2]
+                            with tf.name_scope(c):
+                                self.variable_summaries(var)
+                self.saver = tf.train.Saver()
+
+        else:
+            with tf.Graph().as_default() as self.ver_graph:
+                self.init = tf.global_variables_initializer()
+                self.saver = tf.train.Saver(max_to_keep=100)
+                with tf.variable_scope(self.name):
+                    self.states = tf.placeholder(tf.float32, shape=[None, *self.input_dims],
+                                                name='states')
+                    self.actions = tf.placeholder(tf.float32, shape=[None, self.n_actions],
+                                                  name='action_taken')
+                    self.q_target = tf.placeholder(tf.float32, shape=[None],
+                                               name='q_value')
+                    self.seq_len = tf.placeholder(tf.int32, name='sequence_length')
+                    self.batch_size = tf.placeholder(tf.int32, name='batch_size')
+
+                # Create placeholders to input the hidden state values
+                    c_in = tf.placeholder(tf.float32, [None, self.LSTM_DIM], name='cell_state')
+                    h_in = tf.placeholder(tf.float32, [None, self.LSTM_DIM], name='h_state')
+                    self.state_in = tf.nn.rnn_cell.LSTMStateTuple(c_in, h_in)
+
+            #self._reward = tf.placeholder(tf.float32, shape=[], name='Reward/Time_step')
+            #self.reward_sum = tf.summary.scalar('Reward/Time_step', self._reward)
+
+            #self._waitingtime = tf.placeholder(tf.float32, shape=[], name='TotalWaitingTime/Time_step')
+            #self.waitingtime_sum = tf.summary.scalar('TotalWaitingTime/Time_step', self._waitingtime)
+
+            #self._delay = tf.placeholder(tf.float32, shape=[], name='TotalDelay/Time_step')
+            #self.delay_sum = tf.summary.scalar('TotalDelay/Time_step', self._delay)
+
+                    conv1 = tf.layers.conv2d(inputs=self.states, filters=16,
+                                             kernel_size=(8, 8), strides=(4,4), name='conv1', padding='VALID',
+                                             kernel_initializer=tf.contrib.layers.variance_scaling_initializer(factor=2),use_bias=True, bias_initializer=tf.constant_initializer(0.1))
+            # TensorShape([Dimension(None), Dimension(44), Dimension(39), Dimension(32)])
+
+                    conv1_activated = tf.nn.relu(conv1)
+
+                    conv2 = tf.layers.conv2d(inputs=conv1_activated, filters=32,
+                                             kernel_size=(4, 4), strides=(2,2), name='conv2', padding='VALID',
+                                             kernel_initializer=tf.contrib.layers.variance_scaling_initializer(factor=2), use_bias=True, bias_initializer=tf.constant_initializer(0.1))
+            # TensorShape([Dimension(None), Dimension(21), Dimension(18), Dimension(64)])
+
+                    conv2_activated = tf.nn.relu(conv2)
+                    n_input = conv2_activated.get_shape().as_list()[1]*conv2_activated.get_shape().as_list()[2]*conv2_activated.get_shape().as_list()[3]
+
+                    conv2_activated = tf.reshape(conv2_activated, [-1, n_input])
+
+                    conv2_activated = tf.reshape(conv2_activated, [self.batch_size, self.seq_len, n_input])
+
+                    lstm_cell = tf.nn.rnn_cell.LSTMCell(self.LSTM_DIM, initializer=tf.contrib.layers.xavier_initializer())
+                    outputs, self.cell_state = tf.nn.dynamic_rnn(lstm_cell, conv2_activated, initial_state=self.state_in, dtype=tf.float32, sequence_length=self.seq_len)
+
+                    var1 = tf.get_variable('weights', (self.LSTM_DIM, self.n_actions), initializer=tf.contrib.layers.xavier_initializer(), trainable=True,
+                                                            regularizer=tf.contrib.layers.l2_regularizer(0.01))
+                    var2 = tf.get_variable('biases', (self.n_actions,), trainable=True, initializer=tf.constant_initializer(0.1))
+
+                    h = outputs[:,-1,:]
+
+                    self.Q_values = tf.matmul(h, var1) + var2
+                    tf.summary.histogram('Q_value', self.Q_values)
+
+                    self.q = tf.reduce_sum(tf.multiply(self.Q_values, self.actions), axis=1)
+
+                    self.loss = tf.reduce_mean(tf.square(self.q_target - self.q))
+
+                    self.loss_sum = tf.summary.scalar("Loss", self.loss)
+
+                    self.train_op = tf.train.AdamOptimizer(self.lr).minimize(self.loss)
+
+                    if self.name == 'q_eval':
+                        for var in tf.trainable_variables():
+                            c = var.name[:-2]
+                            with tf.name_scope(c):
+                                self.variable_summaries(var)
 
     def variable_summaries(self, var):
         """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
@@ -148,9 +229,10 @@ class DeepQNetwork(object):
         self.saver.save(self.sess, self.checkpoint_file, global_step=epi_num)
 
 class Agent(object):
-    def __init__(self, alpha, gamma, mem_size, epsilon, batch_size, num_agents, act_per_agent,
-                 replace_target=3000, input_dims=(210, 160, 4), q_next_dir="tmp/q_next", q_eval_dir="tmp/q_eval", test= False):
+    def __init__(self, alpha, gamma, name, gname, mem_size, epsilon, batch_size, num_agents, act_per_agent,replace_target=3000, input_dims=(210, 160, 4), q_next_dir="tmp/q_next", q_eval_dir="tmp/q_eval", test= False):
         self.num_agents = num_agents
+        self.name = name
+        self.gname = gname
         self.act_per_agent = act_per_agent
         self.input_dims = input_dims
         self.n_actions = self.act_per_agent**(self.num_agents)
@@ -165,7 +247,7 @@ class Agent(object):
         self.replace_target = replace_target        
         
         self.q_eval = DeepQNetwork(alpha, self.n_actions, input_dims=input_dims,
-                                   name='q_eval', chkpt_dir=q_eval_dir)
+                                   name=str(self.name), chkpt_dir=q_eval_dir, graph= self.gname)
 
         #self.q_next = DeepQNetwork(alpha, self.n_actions, input_dims=input_dims,
                                    #name='q_next', chkpt_dir=q_next_dir)

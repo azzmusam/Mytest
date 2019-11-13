@@ -20,7 +20,7 @@ import copy
 import time
 from aienvs.Sumo.TrafficLightPhases import TrafficLightPhases
 import yaml
-#from statics_control import *
+from aienvs.Sumo.statics_control import *
 
 
 class SumoGymAdapter(Env):
@@ -77,10 +77,13 @@ class SumoGymAdapter(Env):
         self._chosen_action = None
         self.seed(42)  # in case no seed is given
         self._action_space = self._getActionSpace()
-        #self.stats_control = Control()
+        self.stats_control = Control(self._parameters['tripinfofolder'])
         self.factor_graph = self._parameters['factored_agents']
         self.n_factors = len(list(self.factor_graph.keys()))
         self.factored_coords = self._parameters['factored_coords']
+        self.pixelsPerMeter = self._parameters['pixelsPerMeter']
+        self.testseed = list(self._parameters['test_seed'])
+        self.seed_cntr = 0
     
     def step(self, actions:dict):
         self._set_lights(actions)
@@ -93,6 +96,9 @@ class SumoGymAdapter(Env):
 
         # as in openai gym, last one is the info list
         return obs, global_reward, done, []
+
+    def reset_test_cntr(self):
+        self.seed_cntr = 0
 
     '''def actual_global_reward(self, global_reward):
         global_reward['result'] += -0.1*self._action_switches['0']
@@ -123,14 +129,14 @@ class SumoGymAdapter(Env):
             logging.info("Starting SUMO environment...")
             self._startSUMO()
             # TODO: Wouter: make state configurable ("state factory")
-            self._state = FactoredLDMMatrixState(self.factor_graph, self.factored_coords)
+            self._state = FactoredLDMMatrixState(self.ldm, [self._parameters['box_bottom_corner'], self._parameters['box_top_corner']], factored_agents=self.factor_graph, factored_coords=self.factored_coords, pixelsPerMeter=self.pixelsPerMeter)
             return self._observe(), average_travel_times, average_travel_time
 
         else:
             logging.info("Starting SUMO environment...")
             self._startSUMO()
             # TODO: Wouter: make state configurable ("state factory")
-            self._state = FactoredLDMMatrixState(self.ldm, [self._parameters['box_bottom_corner'], self._parameters['box_top_corner']], self.factor_graph, self.factored_coords)
+            self._state = FactoredLDMMatrixState(self.ldm, [self._parameters['box_bottom_corner'], self._parameters['box_top_corner']], factored_agents=self.factor_graph, factored_coords=self.factored_coords, pixelsPerMeter=self.pixelsPerMeter)
 
             return self._observe()
         
@@ -183,14 +189,22 @@ class SumoGymAdapter(Env):
         maxRetries = self._parameters['maxConnectRetries']
         sumo_binary = checkBinary(val)
         self.dirname = os.path.dirname(__file__)
-        self.out = os.path.join(self.dirname, "../../test/Stats", "tripinfo.xml")
+        outfile = self._parameters['tripinfofolder']
+        self.out = os.path.join(*[self.dirname, "../../test/Stats", outfile, "tripinfo.xml"])
 
         # Try repeatedly to connect
         while True:
             try:
                 # this cannot be seeded
                 self._port = random.SystemRandom().choice(list(range(10000, 20000)))
-                self._seed = self._seed + random.randint(0, 276574)
+                if self._parameters['test']==False:
+                    self._seed = self._seed + random.randint(0, 276574)
+                else:
+                    try:
+                        self._seed = self.testseed[self.seed_cntr]
+                    except:
+                        self._seed = self._seed + random.randint(0, 276574)
+                    self.seed_cntr +=1
                 self._sumo_helper = SumoHelper(self._parameters, self._port, int(self._seed))
                 conf_file = self._sumo_helper.sumocfg_file
                 logging.info("Configuration: " + str(conf_file))

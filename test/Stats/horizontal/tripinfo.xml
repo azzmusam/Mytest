@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on Tue Nov 12 16:54:22 2019 by Eclipse SUMO Version 1.2.0
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
+
+    <input>
+        <net-file value="/home/azlaans/aienvs/aienvs/Sumo/../../scenarios/Sumo/multi_intersection_grid/multi.net.xml"/>
+        <route-files value="/home/azlaans/aienvs/aienvs/Sumo/../../scenarios/Sumo/multi_intersection_grid/10480_routes.rou.xml"/>
+    </input>
+
+    <output>
+        <tripinfo-output value="/home/azlaans/aienvs/aienvs/Sumo/../../test/Stats/horizontal/tripinfo.xml"/>
+    </output>
+
+    <time>
+        <begin value="0"/>
+    </time>
+
+    <report>
+        <verbose value="true"/>
+        <no-step-log value="true"/>
+    </report>
+
+    <traci_server>
+        <remote-port value="10480"/>
+    </traci_server>
+
+    <random_number>
+        <seed value="1573636016"/>
+    </random_number>
+
+</configuration>
+-->
+
+<tripinfos xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/tripinfo_file.xsd">
+</tripinfos>
