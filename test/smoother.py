@@ -54,16 +54,16 @@ def traveltimeplotter(name: str, typ: str):
     print(len(i))
     j = [i for i in range(len(i))]
     fig, ax = plt.subplots()
-    ax.grid(color='grey', linewidth=0.001, alpha=0.5)
+    ax.grid(color='grey', linewidth=0.5, alpha=1)
     ax.set_title('Average Travel Time')
     ax.set_xlabel('Time Steps')
     ax.set_ylabel('Average Travel Time(sec)')
-    plt.plot(j, i, '-k', label='Average Travel Time')
+    plt.plot(j, i, '-k', linewidth=0.3, label='Average Travel Time')
     plt.legend(loc='best')
     plt.grid()
     plt.xticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
     fignam = str(typ) + 'Travel Time'
-    plt.savefig(fignam, dpi=200)
+    plt.savefig(fignam, dpi=300)
 
 def normalplotter(typ: str, title: str, xlabel: str, ylabel: str, name: str):
     path = os.getcwd()
