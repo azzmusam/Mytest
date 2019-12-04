@@ -12,7 +12,7 @@ class DeepQNetwork(object):
     def __init__(self, lr, n_actions, name, fc1_dims=512, LSTM_DIM=256,
                  input_dims=(210, 160, 4), chkpt_dir="tmp/dqn"):
         config = tf.ConfigProto()
-        config.gpu_options.visible_device_list= '0,1'
+        config.gpu_options.visible_device_list= '2,3'
         config.gpu_options.allow_growth = True
         #config.gpu_options.per_process_gpu_memory_fraction = 0.5
         #config.log_device_placement = True
@@ -27,12 +27,12 @@ class DeepQNetwork(object):
         self.build_network()
         self.sess.run(tf.global_variables_initializer())
         self.saver = tf.train.Saver(max_to_keep=150)
-        self.checkpoint_file = os.path.join(chkpt_dir, "horizontal_deepqnet.ckpt")
+        self.checkpoint_file = os.path.join(chkpt_dir, "three_deepqnet.ckpt")
         self.params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
                                         scope=self.name)
         self.write_op = tf.summary.merge_all()
         dirname = os.path.dirname(__file__)
-        self.log = os.path.join(*[dirname, 'tmp', 'horizontal','log_dir', self.name])
+        self.log = os.path.join(*[dirname, 'tmp', 'three','log_dir', self.name])
         if os.path.exists(self.log):
             print("output_results: ", str(self.log))
         else:
@@ -134,7 +134,7 @@ class DeepQNetwork(object):
 
 class Agent(object):
     def __init__(self, alpha, gamma, mem_size, epsilon, batch_size, num_agents, act_per_agent,
-                 replace_target=30000, input_dims=(210, 160, 4), q_next_dir="tmp/horizontal/q_next", q_eval_dir="tmp/horizontal/q_eval"):
+                 replace_target=30000, input_dims=(210, 160, 4), q_next_dir="tmp/three/q_next", q_eval_dir="tmp/three/q_eval"):
 
         self.num_agents = num_agents
         self.act_per_agent = act_per_agent
@@ -153,27 +153,26 @@ class Agent(object):
         self.q_eval = DeepQNetwork(alpha, self.n_actions, input_dims=input_dims,
                                    name='q_eval', chkpt_dir=q_eval_dir)
 
-        self.q_next = DeepQNetwork(alpha, self.n_actions, input_dims=input_dims,
-                                   name='q_next', chkpt_dir=q_next_dir)
+        #self.q_next = DeepQNetwork(alpha, self.n_actions, input_dims=input_dims,
+         #                          name='q_next', chkpt_dir=q_next_dir)
         self.create_memory()
         self.all_list = []
         for j in it.product(tuple(self.action_space), repeat = self.num_agents):
             self.all_list.append(j)
 
     def create_memory(self):
-        self.state_memory = np.zeros((self.mem_size, *self.input_dims))
+        #self.state_memory = np.zeros((self.mem_size, *self.input_dims))
         
-        self.new_state_memory = np.zeros((self.mem_size, *self.input_dims))
-        self.action_memory = np.zeros((self.mem_size, self.n_actions),
-                                      dtype=np.int8)
-        self.reward_memory = np.zeros(self.mem_size)
-        self.terminal_memory = np.zeros(self.mem_size, dtype=np.int8)
+        #self.new_state_memory = np.zeros((self.mem_size, *self.input_dims))
+        #self.action_memory = np.zeros((self.mem_size, self.n_actions),
+          #                            dtype=np.int8)
+        #self.reward_memory = np.zeros(self.mem_size)
+        #self.terminal_memory = np.zeros(self.mem_size, dtype=np.int8)
 
         c_init = np.zeros((1, self.LSTM_DIM), np.float32)
         h_init = np.zeros((1, self.LSTM_DIM), np.float32)
         self.state_out = (c_init, h_init)
-        
-
+    
 
     def action_hot_encoder(self, actions, all_list):
         action = np.zeros((self.n_actions))
@@ -241,7 +240,8 @@ class Agent(object):
             lstm_c, lstm_h = lstm_state
     
             self.state_out = (lstm_c[:1, :], lstm_h[:1, :])
-            action = np.argmax(actions)
+            action = np.random.choice(np.flatnonzero(actions == actions.max()))
+            #action = np.argmax(actions)
             action_ht = np.zeros((self.n_actions))
             action_ht[action] = 1. 
             action = self.action_decoder(action_ht, self.all_list)
@@ -352,7 +352,8 @@ class Agent(object):
 
         lstm_c, lstm_h = lstm_state
         self.state_out = (lstm_c[:1, :], lstm_h[:1, :])
-        action = np.argmax(actions)
+        action = np.random.choice(np.flatnonzero(actions == actions.max()))
+        #action = np.argmax(actions)
         action_ht = np.zeros((self.n_actions))
         action_ht[action] = 1.
         return self.action_decoder(action_ht, self.all_list)
@@ -365,9 +366,9 @@ class Agent(object):
         self.q_eval.save_checkpoint(epi_num = self.episode_number)
         self.q_next.save_checkpoint(epi_num = self.episode_number)
 
-    def load_models(self, q_eval_checkpoint, q_next_checkpoint):
+    def load_models(self, q_eval_checkpoint):
         self.q_eval.load_checkpoint(q_eval_checkpoint)
-        self.q_next.load_checkpoint(q_next_checkpoint)
+        #self.q_next.load_checkpoint(q_next_checkpoint)
 
     def update_graph(self):
         t_params = self.q_next.params

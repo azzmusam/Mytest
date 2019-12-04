@@ -9,27 +9,25 @@ import pdb
 
 class DeepQNetwork(object):
 
-    def __init__(self, lr, n_actions, fc1_dims=512, LSTM_DIM=256,
+    def __init__(self, lr, n_actions, name, fc1_dims=512, LSTM_DIM=256,
                  input_dims=(210, 160, 4), chkpt_dir="tmp/dqn"):
         self.lr = lr
-        #self.dqnname = dqnname
+        self.name = name
         config = tf.ConfigProto()
-        config.gpu_options.visible_device_list = "2,3"
+        #config.gpu_options.visible_device_list = "2,3"
         #config.gpu_options.allow_growth = True
-        config.gpu_options.per_process_gpu_memory_fraction = 0.4
+        #config.gpu_options.per_process_gpu_memory_fraction = 0.4
         self.LSTM_DIM = LSTM_DIM
         self.n_actions = n_actions
         self.fc1_dims = fc1_dims
         self.chkpt_dir = chkpt_dir
         self.input_dims = input_dims
-        #self.graph = tf.get_default_graph()
-        #self.sess = tf.Session(config=config)
-        #self.build_network()
-        #self. build_test_model()
-        #self.sess.run(tf.global_variables_initializer())
+        self.sess = tf.Session(config=config)
+        self.build_network()
+        self.sess.run(tf.global_variables_initializer())
         self.checkpoint_file = os.path.join(chkpt_dir, "deepqnet.ckpt")
-        #self.saver = tf.train.Saver(max_to_keep=100)
-        #self.params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
+        self.saver = tf.train.Saver(max_to_keep=100)
+        self.params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
         #self.write_op = tf.summary.merge_all()
         #dirname = os.path.dirname(__file__)
         #self.log = os.path.join(*[dirname, 'tmp', 'log_dir', self.name])
@@ -50,8 +48,8 @@ class DeepQNetwork(object):
             print('Lod_Dir created for tensorboard summary', self.log)
             
 
-    '''def build_network(self):
-        with tf.variable_scope(self.dqnname):
+    def build_network(self):
+        with tf.variable_scope(self.name):
             self.states = tf.placeholder(tf.float32, shape=[None, *self.input_dims],
                                     name='states') 
             self.actions = tf.placeholder(tf.float32, shape=[None, self.n_actions], name='action_taken')
@@ -123,7 +121,7 @@ class DeepQNetwork(object):
                 for var in tf.trainable_variables():
                     c = var.name[:-2]
                     with tf.name_scope(c):
-                        self.variable_summaries(var)'''
+                        self.variable_summaries(var)
 
     def variable_summaries(self, var):
         """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
@@ -133,70 +131,7 @@ class DeepQNetwork(object):
 
     def load_checkpoint(self, filename):
         print('... loading checkpoint ...')
-        metaname = filename + ".meta"
-        #self.graph = self.sess.graph
-        self.saver= tf.train.import_meta_graph(metaname)
-        #self.graph = tf.get_default_graph()
-        self.sess = tf.Session()
-        self.build_test_model()
         self.saver.restore(self.sess, filename)
-
-        '''print([node.name for node in graph.as_graph_def().node])
-        c =[x for x in tf.get_default_graph().get_operations() if x.type == "Placeholder"]
-        print(c)
-        d = []
-        for var in tf.trainable_variables():
-            v = var.name[:-2]
-            d.append(v)
-        print(d)'''
-
-    def build_test_model(self):
-        self.states = self.sess.graph.get_tensor_by_name('q_eval/states:0')
-        #self.actions = self.graph.get_tensor_by_name('q_eval/action_taken')
-        #self.q_target =self.graph.get_tensor_by_name()
-        self.seq_len = self.sess.graph.get_tensor_by_name('q_eval/sequence_length:0')
-        self.batch_size = self.sess.graph.get_tensor_by_name('q_eval/batch_size:0')
-        #h_in = self.sess.graph.get_tensor_by_name('q_eval/h_state:0')
-        #c_in = self.sess.graph.get_tensor_by_name('q_eval/cell_state:0')
-        #self.state_in = tf.nn.rnn_cell.LSTMStateTuple(c_in, h_in)
-
-            # Create placeholders to input the hidden state values
-        self.current_c = self.sess.graph.get_tensor_by_name('q_eval/rnn/while/Exit_3:0')
-        self.current_h = self.sess.graph.get_tensor_by_name('q_eval/rnn/while/Exit_4:0')
-        self.current_state = tf.nn.rnn_cell.LSTMStateTuple(self.current_c, self.current_h)
-        
-        '''conv1 = self.graph.get_tensor_by_name('q_eval/conv1:0')
-        conv1_activated = tf.nn.relu(conv1)
-        
-        conv2 = self.graph.get_tensor_by_name('q_eval/conv2:0') 
-        conv_activated = tf.nn.relu(conv2)
-        n_input = conv2_activated.get_shape().as_list()[1]*conv2_activated.get_shape().as_list()[2]*conv2_activated.get_shape().as_list()[3]
-        
-        conv2_activated = tf.reshape(conv2_activated, [-1, n_input])
-        conv2_activated = tf.reshape(conv2_activated, [self.batch_size, self.seq_len, n_input])
-        
-        #outputs, self.cell_state = 
-        var1 = self.graph.get_tensor_by_name('q_eval/weights:0')
-        var2 = self.graph.get_tensor_by_name('q_eval/biases:0')
-        h = outputs[:,-1,:]'''
-
-        self.Q_values = self.sess.graph.get_tensor_by_name('q_eval/add:0')
-
-
-
-    '''def create_model_placeholder(self):
-        self.states = tf.placeholder(tf.float32, shape=[None, *self.input_dims],
-                                    name='states')
-        self.actions = tf.placeholder(tf.float32, shape=[None, self.n_actions], name='action_taken')
-        self.q_target = tf.placeholder(tf.float32, shape=[None],
-                                       name='q_value')
-        self.seq_len = tf.placeholder(tf.int32, name='sequence_length')
-        self.batch_size = tf.placeholder(tf.int32, name='batch_size')
-
-            # Create placeholders to input the hidden state values
-        c_in = tf.placeholder(tf.float32, [None, self.LSTM_DIM], name='cell_state')
-        h_in = tf.placeholder(tf.float32, [None, self.LSTM_DIM], name='h_state')
-        self.state_in = tf.nn.rnn_cell.LSTMStateTuple(c_in, h_in)'''
 
     def save_checkpoint(self, epi_num):
         print('... Saving Checkpoint ...')
@@ -210,10 +145,9 @@ class DeepQNetwork(object):
         self.saver.save(self.sess, self.checkpoint_file, global_step=epi_num)
 
 class Agent(object):
-    def __init__(self, alpha, gamma, mem_size, name, epsilon, batch_size, num_agents, act_per_agent,
+    def __init__(self, alpha, gamma, mem_size, epsilon, batch_size, num_agents, act_per_agent,
                  replace_target=3000, input_dims=(210, 160, 4), q_next_dir="tmp/q_next", q_eval_dir="tmp/q_eval", test= False):
         self.num_agents = num_agents
-        self.name = name
         self.act_per_agent = act_per_agent
         self.input_dims = input_dims
         self.n_actions = self.act_per_agent**(self.num_agents)
@@ -227,8 +161,8 @@ class Agent(object):
         self.batch_size = batch_size
         self.replace_target = replace_target        
         
-        self.q_eval = DeepQNetwork(alpha, self.n_actions, input_dims=input_dims, #dqnname=self.name,
-                                   chkpt_dir=q_eval_dir)
+        self.q_eval = DeepQNetwork(alpha, self.n_actions, input_dims=input_dims,
+                                   name='q_eval', chkpt_dir=q_eval_dir)
 
         #self.q_next = DeepQNetwork(alpha, self.n_actions, input_dims=input_dims,
                                    #name='q_next', chkpt_dir=q_next_dir)
@@ -418,9 +352,9 @@ class Agent(object):
         return self.action_decoder(action_ht, self.all_list) 
 
     def get_qval(self, state):
-        q_values, lstm_state = self.q_eval.sess.run([self.q_eval.Q_values, self.q_eval.current_state],
+        q_values, lstm_state = self.q_eval.sess.run([self.q_eval.Q_values, self.q_eval.cell_state],
                                        feed_dict={self.q_eval.states: state,
-                                                  self.q_eval.current_state: self.state_out,
+                                                  self.q_eval.state_in: self.state_out,
                                                   self.q_eval.seq_len: 1,
                                                   self.q_eval.batch_size: 1})
         lstm_c, lstm_h = lstm_state

@@ -1,0 +1,359 @@
+import os
+import sys
+import numpy as np
+np.random.seed(0)
+#from factor_graph import factor_graph
+import collections
+import itertools as it
+import random
+import collections
+
+class maxplus():
+
+    def __init__(self, regular_factor, agent_neighbour_combo, max_iter):#, factored_agent_type, modelnr):
+        self.regular_factor = regular_factor
+        self.factored_agent = agent_neighbour_combo
+        self.qval_combo_list = self.qval_combo_initialiser()
+        # factored_agent should be an agent(vertex) as keys and value as a list of neighbour: THIS IS DONEEEEEEEE!!!!!!!
+        self.num_actions = 2
+        #self.initialise_msg()
+        #self.payoff_initialiser()
+        self.max_iter = max_iter
+        self.factored_action_list = [i for i in it.product((0,1), repeat = 2)]
+        #self.action_payoff_tup = []
+        self.alpha = 0.5
+        self.threshold = 0.5
+
+    def initialise_again(self):
+        self.initialise_msg()
+        self.payoff_initialiser()
+        self.action_payoff_tup = [] 
+
+    def qval_combo_initialiser(self):
+        q_val_combination = []
+        for keys in self.regular_factor.keys():
+            q_val_combination.append(list(self.regular_factor[keys]))
+        return q_val_combination
+
+    def initialise_msg(self):
+        self.sen_msg_bool = {}
+        # sen_msg_bool is to determine the fixed point has arrived yet or not.
+        self.sen_msg = {}
+        self.difference_dict = {}
+        for keys in self.factored_agent.keys():
+            self.sen_msg[keys] = {}
+            self.sen_msg_bool[keys] = {}
+            self.difference_dict[keys] = {}
+            for c in self.factored_agent[keys]:
+                self.sen_msg[keys][c] = {}
+                self.sen_msg_bool[keys][c] = {}
+                self.difference_dict[keys][c] = {}
+                for i in range(self.num_actions):
+                    self.sen_msg[keys][c][str(i)] = [np.random.normal()]
+                    self.sen_msg_bool[keys][c][str(i)] = [True]
+                    self.difference_dict[keys][c][str(i)] = []
+
+    '''Initialise msg initialises the message dictionary as sent message.
+    with keys as the neighbouring agents and values are stored inside a list. For example:
+    sen_msg ={'0'= {'1':{'0':[], '1':[]}, '2':{'0':[], '1':[]}}, 
+              '1'= {'0':{'0':[], '1':[]}, '2':{'0':[], '1':[]}},
+              '2' = {'1':{'0':[], '1':[]}, '0':{'0':[], '1':[]}}}'''
+
+    '''Payoff is a dict== {agentid: {action_0:[], action_1:[] }}
+       Here the action represents the action of agent represented by agentid.'''
+
+    def payoff_initialiser(self):
+        self.payoff = {}
+        self.best_action = {}
+        for keys in self.factored_agent.keys():
+            self.payoff[keys] = {}
+            self.best_action[keys] = [] 
+            for i in range(self.num_actions):
+                self.payoff[keys][str(i)] = []
+
+    def random_agent_selector(self):
+        sample = random.sample(list(self.factored_agent.keys()), len(self.factored_agent.keys()))
+        return sample
+
+    def normaliser(agent_sending, agent_receiving, action):
+        pass
+
+    def connected_nodes(self, agentid):
+        return list(self.factored_agent[agentid])
+
+    def action_value_summer(self, msg:dict):
+        msg_array = {}
+        for keys in msg.keys():
+            msg_array[keys] = np.sum(msg[keys])
+        return msg_array 
+
+    def dict_to_array(self, dictionary:dict):
+        lst = []
+        for keys in dictionary.keys():
+            lst.append(dictionary[keys])
+        return np.asarray(lst)
+
+    '''From here on we define the methods that we make use after the initialisation and after running the first iteration'''         
+
+    def factored_q_val_extracter(self, agentid, one_left_neighbour, q_val):
+        '''From the Q_value_dictionary it returns the q_value as an array for shape(1, action_per_agent*num_actions), in my case its (1,4)'''
+        lst = list((agentid, one_left_neighbour))
+        for val in self.qval_combo_list:
+            # actual_combo = list((int(keys[1]), int(keys[4]))) 
+            if collections.Counter(lst) == collections.Counter(val):
+                qval = q_val[str(val)]
+                break
+        return qval
+    
+    def extract_order(self, agentid, one_left_neighbour):
+        '''one left neighbour indicates a single neighbour from the list of neighbouring from which it receives 
+           message in order to send it to other neighbour which is not included in the list'''
+        bool_val = False
+        for val in self.qval_combo_list:
+            if list((agentid, one_left_neighbour))== val:
+                bool_val = True
+                break
+        return bool_val
+
+    def max_outgoing_cal(self, reduced_q_arr, incoming_msg_dict):
+        lst = []
+        for keys in incoming_msg_dict.keys():
+            lst.append(incoming_msg_dict[keys])
+        try:
+            msg_action_val = np.asarray(reduced_q_arr) + np.asarray(lst[0]) + np.asarray(lst[1]) + np.asarray(lst[2])
+        except:
+            pass
+        try:
+            msg_action_val = np.asarray(reduced_q_arr) + np.asarray(lst[0]) + np.asarray(lst[1])
+        except:
+            msg_action_val = np.asarray(reduced_q_arr) + np.asarray(lst[0])
+         
+        index = np.argmax(msg_action_val)
+        return msg_action_val[index], index
+
+    def q_array_reducer(self, specific_q_val, bool_val, action: str):
+        '''returns the q_value as a list containing only the relevant q_val'''
+        q_arr = []
+        if bool_val == True:
+            if action == str(0):
+                q_arr.append(specific_q_val[0][0])
+                q_arr.append(specific_q_val[0][2])
+                print("Selecting q_val for ", action)
+            else:
+                q_arr.append(specific_q_val[0][1])
+                q_arr.append(specific_q_val[0][3])
+        else:
+            if action == str(0):
+                q_arr.append(specific_q_val[0][0])
+                q_arr.append(specific_q_val[0][1])
+                print("Selecting q_val for ", action)
+            else:
+                q_arr.append(specific_q_val[0][2])
+                q_arr.append(specific_q_val[0][3])
+        return q_arr
+
+    def agent_incoming_msg(self, agent_receiving, sending_neighbours: list, exclude: bool, exc_agent = None):
+        '''returns a dict of incoming messages with the actions for the given agentid.
+           rec_message= {neighbour1:{action0: [], action1: []}, neighbour2:{action0:[], action1:[]}}'''
+        rec_message = {}
+        if exclude:
+                sending_neighbours.remove(exc_agent)
+        for val in sending_neighbours:
+            for keys in self.sen_msg[val].keys():
+                if agent_receiving==keys:
+                    rec_message[val] = self.sen_msg[val][keys]
+                    break
+        return rec_message
+
+    def msg_last_action_dict(self, agentid, left_neighbour: list):
+        '''returns a dictionary of agent_neighbour as keys with list as values containing last message for each of the action
+           This is used for input to the mu_ij calculator for max_ai
+           msg_dict = {neighbour1:[action 0 last message value, action1 last message value] , neighbour2: [action 0 last message value, action1 last message value]}'''
+        # uses agent_incoming_message() in order to get the incoming message for the particular agentid (without exclusion).
+        incoming_message = self.agent_incoming_msg(agent_receiving=agentid, sending_neighbours=left_neighbour, exclude = False, exc_agent = None)
+        message_dict = {}
+        for keys in incoming_message.keys():
+            message_dict[keys] = []
+            for key in incoming_message[keys].keys():
+                message_dict[keys].append(incoming_message[keys][key][-1])
+        return message_dict
+
+    def intsum_incoming_messges(self, agent_number):
+        '''Sums all the incoming messages for a particular agent i'''
+        ''' Can be used when we are initialising the messages for the first time using predefined normal noise for the message'''
+        connected_agents = self.connected_nodes(agent_number)
+        rec_message = self.agent_incoming_msg(agent_receiving=agent_number, sending_neighbours=connected_agents, exclude=False, exc_agent=None)
+        sum_action_array = self.sum_array_initialiser()
+        for keys in rec_message.keys():
+            for key in rec_message[keys].keys():
+                sum_action_array[key].append(rec_message[keys][key][-1])
+        msg_dict = self.action_value_summer(sum_action_array)
+        return msg_dict 
+
+    def sum_array_initialiser(self):
+        sum_arr = {}
+        for i in range(self.num_actions):
+            sum_arr[str(i)] = []
+        return sum_arr
+
+    def msg_dict_update(self, agentid, neighbour, action, message):
+        ''' Here use the update rule for the message as told by Frans and also return the difference between the last and the current value'''
+        last_msg = self.sen_msg[agentid][neighbour][action][-1]
+        new_msg = self.alpha*(last_msg) + (1-self.alpha)*message
+        msg_diff = new_msg - last_msg
+        if msg_diff >= self.threshold:
+             self.sen_msg_bool[agentid][neighbour][action].append(False)
+        else:
+             self.sen_msg_bool[agentid][neighbour][action].append(True)    
+        self.sen_msg[agentid][neighbour][action].append(new_msg)
+        self.difference_dict[agentid][neighbour][action].append(msg_diff)
+   
+    def send_outgoing_msg(self, agentsending, agent_receiving, message_dict, q_val):
+        bool_val = self.extract_order(agentsending, agent_receiving) # to check if the configuration of the factored agents is the same as agent and its neighbour
+        q_arr = self.factored_q_val_extracter(agentsending, agent_receiving, q_val) #This is an array of shape (1,4).    
+        for keys in message_dict.keys():
+            for action in range(self.num_actions):
+                action = str(action)
+                print('Working on Action', action, 'for agent', agentsending, 'for its neighbour', keys)
+                q_val = self.q_array_reducer(q_arr, bool_val, action)
+                # q_val is a list: [1,2]
+                message, index = self.max_outgoing_cal(q_val, message_dict)
+                self.msg_dict_update(agentsending, agent_receiving, action, message)
+                '''message is the single maximum value. Index can also be treated as the string value of action of 
+                   agentid(agent 'i' the one which sends message to 'j').'''
+
+    def payoff_update(self, agentid):
+        '''compute global payoff and append on the list and make a variable which contains the best joint action found so far which yields the maximum
+           value of global payoff'''
+        summed_message_dict = self.intsum_incoming_messges(agentid)
+        summed_message_list = []
+        for keys in summed_message_dict.keys():
+            self.payoff[agentid][keys].append(summed_message_dict[keys])
+            summed_message_list.append(summed_message_dict[keys])       
+        best_action = np.argmax(summed_message_list)
+        for keys in summed_message_dict.keys():
+            val = summed_message_dict[keys]
+            if val == summed_message_list[best_action]:
+                best_action = keys
+        best_action = str(best_action)
+        self.best_action[agentid].append(best_action)
+
+    def get_best_joint_action(self):
+        best_joint_action = {}
+        for keys in self.best_action.keys():
+             best_joint_action[keys] = self.best_action[keys][-1]
+        return best_joint_action
+
+    def global_payoff_cal(self, q_val):
+        '''Calculates the global payoff u(a) = Summ(f_ij), for the best joint action found so far.''' 
+        best_joint_action = self.get_best_joint_action()
+        global_payoff = 0
+        for keys in self.regular_factor.keys():
+            action_tup = []
+            q_ij = self.regular_factor[keys]
+            qvalue = q_val[str(q_ij)] # this is a (1,4) shaped q value.
+            for val in q_ij:
+                action_tup.append(best_joint_action[val])
+            action_tup = tuple(action_tup)
+            for key, val in enumerate(self.factored_action_list):
+                if action_tup==val:
+                    index = key
+                    break
+            global_payoff += qvalue[index] 
+        return global_payoff, best_joint_action
+
+    def action_payoff_tup_to_sumo_action(self, action_pay_tup):
+        action = action_pay_tup[1]
+        sumo_act = collections.OrderedDict()
+        for keys in action.keys():
+            sumo_act[keys] = action[keys]
+        return sumo_act
+
+    def max_plus_calculator(self, q_val):
+        agent_schedule = self.random_agent_selector()
+        fixed_point = False
+        best_action_so_far = []
+        for i in range(self.max_iter):
+            for val in agent_schedule:
+                agent_neighbour = self.connected_nodes(val)
+                for neighbour in agent_neighbour:
+                    print(neighbour, ' selected from ',agent_neighbour)
+                    left_neighbour = [i for i in agent_neighbour if i!=neighbour]
+                    message_dict = self.msg_last_action_dict(val, left_neighbour)
+                    print("Received incoming message from left neighbours: ", message_dict) 
+                    self.send_outgoing_msg(agentsending=val, agent_receiving=neighbour, message_dict=message_dict, q_val=q_val)
+                self.payoff_update(val)
+            glo_pay, joint_action = self.global_payoff_cal(q_val)
+            self.action_payoff_tup.append(tuple((glo_pay, joint_action)))
+        print(self.action_payoff_tup)
+        return self.action_payoff_tup_to_sumo_action(self.action_payoff_tup[-1])
+
+
+if __name__=="__main__":
+
+    ''' Fix factor_agent in the main input.'''
+    #    *****FIXED*******
+    ''' Fix q_val such that the keys are represented as the combination of the agents and values are arrays of shape(1,4)'''
+    #    ****** FIXED *****
+    ''' Change the name of the factored agent to the name of the agent and its neighbours'''
+    #   ****** FIXED ********
+
+
+    agent_neighbour_combo = {0: [1,4],
+                            1: [0, 2, 4],
+                            2: [1, 5],
+                            3: [0, 4],
+                            4: [1, 3, 5],
+                            5: [2, 4]}
+
+    regular_factor = {"0": [0, 1],
+                      "1": [1, 2],
+                      "2": [3, 4],
+                      "3": [4, 5],
+                      "4": [0, 3],
+                      "5": [1, 4],
+                      "6": [2, 5]}
+  
+    q_val = {} 
+    '''{'[0, 1]': array([[0.5488135 , 0.71518937, 0.60276338, 0.54488318]]), '[1, 2]': array([[0.4236548 , 0.64589411, 0.43758721, 0.891773  ]]), '[3, 4]': array([[0.96366276, 0.38344152, 0.79172504,  
+        0.52889492]]), '[4, 5]': array([[0.56804456, 0.92559664, 0.07103606, 0.0871293 ]]), '[0, 3]': array([[0.0202184 , 0.83261985, 0.77815675, 0.87001215]]), '[1, 4]': array([[0.97861834, 0.79915856,  
+        0.46147936, 0.78052918]]), '[2, 5]': array([[0.11827443, 0.63992102, 0.14335329, 0.94466892]])}'''
+
+    q_val_combination = []
+    '''[[0, 1], [1, 2], [3, 4], [4, 5], [0, 3], [1, 4], [2, 5]]'''
+
+    for keys in regular_factor.keys():
+        q_val_combination.append(list(regular_factor[keys]))
+
+    for val in q_val_combination:
+        q_val[str(val)] = np.random.rand(1,4)
+    print(q_val)
+
+    mp = maxplus(regular_factor, agent_neighbour_combo)
+    #message_dict = mp.msg_last_action_dict(1, [2,3])
+    
+    mp.max_plus_calculator(q_val)
+    
+    #print(mp.intsum_incoming_messges(1))
+    #print(mp.msg_last_action_dict(agentid='1', left_neighbour=['2','3']))
+
+
+    #array = mp.dict_to_array(d) 
+    #for keys in wrong_agents.keys():	
+     #   agent = wrong_agents[keys][0]
+      #  neighbour = wrong_agents[keys][1]
+       # print(mp.extract_order(agent, neighbour))
+
+    '''for keys in factored_agents.keys():
+           sum_msg = mp.sum_incoming_messges(keys)
+           print(sum_msg)'''
+
+    '''for keys in factored_agents.keys():
+        z = mp.connected_nodes(agentid=keys)
+        print(z)'''
+
+    '''for i in range(10):
+        sample = mp.random_agent_selector()
+        print(sample)'''
+
+

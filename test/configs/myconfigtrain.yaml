@@ -4,7 +4,7 @@ parameters:
     box_bottom_corner: [330,360]  # still needs to be set for cross_network= done
     box_top_corner: [690, 660]  # stil needs to be set for cross_network= done.
 
-    y_t: 0 # yellow light traffic time
+    y_t: 4 # yellow light traffic time
 
     resolutionInPixelsPerMeterX: 0.3
     resolutionInPixelsPerMeterY: 0.3

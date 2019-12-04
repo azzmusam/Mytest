@@ -1,5 +1,5 @@
 import aienvs
-from imp_DQRN import DeepQNetwork, Agent
+from multi_DQRN import DeepQNetwork, Agent
 import yaml
 import logging
 import pdb
@@ -14,39 +14,23 @@ path = os.getcwd()
 def saver(data, name, iternr):
     path = os.getcwd()
     name = str(name)
-    filename = 'test_result/vertical/'+ name + str(iternr) +'.csv'
+    filename = 'test_result/single/'+ name + '_' + str(iternr) +'.csv'
     pathname = os.path.join(path, filename)
-    outfile = open(pathname, 'a')
+    outfile = open(pathname, 'w')
     writer = csv.writer(outfile)
     writer.writerows(map(lambda x:[x], data))
 
-def fileinitialiser(test_result):
+def save(test_result, iternr):
+    for keys in test_result.keys():
+        saver(test_result[keys], keys, iternr)
+
+def fileinitialiser(test_result, i):
     path = os.getcwd()
     for key in test_result.keys():
-        filename = 'test_result/vertical/'+ key + '10000'  +'.csv'
+        filename = 'test_result/single/'+ key + '_' + str(i)  +'.csv'
         pathname = os.path.join(path, filename)
         with open(pathname, "w") as my_empty_csv:
             pass
-
-def file_rename(name, iternr):
-    path = os.getcwd()
-    res_dir = os.path.join(path, 'test_result/vertical')
-    #filename = 'test_result/'+ name + str(iternr-10000) +'.csv'
-    #res_dir = os.path.join(path, filename)
-    oldname = str(name) + str(iternr-10000)  + '.csv'
-    newname = str(name) + str(iternr) + '.csv'
-    os.rename(res_dir+ '/' + oldname, res_dir + '/' + newname)
-
-def filename():
-    res_dir = os.path.join(path, 'test_result/vertical/')
-    files = os.listdir(res_dir)
-    #return csvfile = [files for files in files if files.endswith('csv')]
-
-def sav_ren(data, iternr):
-    for key in data.keys():
-        result = data[key]
-        saver(data=result, name=key, iternr=iternr-10000)
-        file_rename(key, iternr)
 
 def stack_frames(stacked_frames, frame, buffer_size):
     if stacked_frames is None:
@@ -69,7 +53,7 @@ if __name__ == '__main__':
     logger.setLevel(logging.INFO)
     logging.info("Starting test_traffic_new")
 
-    with open("configs/vertical_config.yaml", 'r') as stream:
+    with open("configs/new_config.yaml", 'r') as stream:
         try:
             parameters = yaml.safe_load(stream)['parameters']
         except yaml.YAMLError as exc:
@@ -78,7 +62,7 @@ if __name__ == '__main__':
     env = SumoGymAdapter(parameters)
     mem_size = None
     agent = Agent(gamma=0.99, epsilon=1.0, alpha=0.00025, input_dims=(84,84,1),
-                  act_per_agent=2, num_agents=2, mem_size=mem_size, batch_size=32, test=True)
+                  act_per_agent=2, num_agents=1, mem_size=mem_size, batch_size=32)
 
     total_number_simulation = 8
     stack_size = 1
@@ -93,27 +77,23 @@ if __name__ == '__main__':
 
     test_result = result_initialiser()
     path = os.getcwd()
-
-    fileinitialiser(test_result)
     
     for i in range(10000, 1000000, 10000):
-
+        env.reset_test_cntr()
         if i>10000:
-            env.reset_test_cntr()
             observation, average_train_times, average_train_time = env.reset(i)
             test_result['traveltime'].append(average_train_time)
             print(test_result['traveltime'])
-            sav_ren(test_result, i)
+            save(test_result, i)
         else:
             observation= env.reset()
 
         observation, stacked_state = stack_frames(stacked_frames= None, frame=observation, buffer_size=stack_size)
         agent.reset()
-        test_result = result_initialiser()
 
         try:
-            filename = 'vertical_deepqnet.ckpt-' + str(i)
-            chkpt = os.path.join(*[path, 'tmp', 'vertical', 'q_eval', filename])
+            filename = 'deepqnet.ckpt-' + str(i)
+            chkpt = os.path.join(*[path, 'tmp', 'q_eval', filename])
             agent.load_models(chkpt)
             print('LOADED CHECKPOINT:', filename)
         except:
@@ -121,7 +101,7 @@ if __name__ == '__main__':
 
         for j in range(total_number_simulation):
             done = False
-            if j>0:    
+            if j >0:
                 try:
                     observation, average_train_times, average_train_time = env.reset(j)
                     test_result['traveltime'].append(average_train_time)
@@ -145,8 +125,8 @@ if __name__ == '__main__':
 
                 observation = observation_
                 stacked_state = stacked_state_
-
+    
     observation, average_test_times, average_test_time = env.reset(i)
     test_result['traveltime'].append(average_test_time)
-    sav_ren(test_result, 1010000)
+    save(test_result, i)
     env.close()

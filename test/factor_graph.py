@@ -9,11 +9,13 @@ import tensorflow as tf
 
 class factor_graph():
     
-    def __init__(self, factored_graph, num_agents, factored_agent_type, modelnr):
+    def __init__(self, factored_graph, num_agents, factored_agent_type, modelnr, algorithm):
         self.factored_graph = factored_graph
         self.num_agents = num_agents
+        # Num_agents should be the actual number of intersections even in the case of individual algorithm
         self.factored_agent_type = factored_agent_type
         self.modelnr = modelnr
+        self.algorithm = algorithm
         self.num_factors = len(factored_graph.keys())
         self.act_per_agent = 2
         self.action_space = [i for i in range(self.act_per_agent)]
@@ -31,10 +33,10 @@ class factor_graph():
             self.action_list.append(i)
 
     def get_factored_Q_val(self, state_graph):
-        '''Outputs Q value for each of the factored graph/agents'''
+        '''Outputs Q value for all of the factored graph/agents as an array'''
         q_array= {}
         for keys in self.factored_agent_type.keys():
-            q_array[keys] = self.get_q_value(self.factored_agent_type[keys], state_graph[keys])
+            q_array[keys] = self.get_q_value(state_graph[keys])
         return q_array
 
 
@@ -42,33 +44,44 @@ class factor_graph():
         '''Generates q_network for factored agents which in general is two agents per factor'''
         self.Q_function_dict = {} 	
         mem_size = None
-        hor_q_func = Agent(gamma=0.99, epsilon=1.0, alpha=0.00025, input_dims=(84,84,1),
-                       act_per_agent=2, num_agents=2, mem_size=mem_size, batch_size=32,
-                       replace_target=30000, name="q_eval", q_next_dir="tmp/six/q_next", q_eval_dir="tmp/six/q_eval", test=True)
-        
-        #ver_q_func = Agent(gamma=0.99, epsilon=1.0, alpha=0.00025, input_dims=(84,84,1),
-         #              act_per_agent=2, num_agents=2, name="q_eval", mem_size=mem_size, batch_size=32, replace_target=30000, q_next_dir="tmp/six/q_next", q_eval_dir="tmp/six/q_eval", test=True)
-        self.Q_function_dict['horizontal'] = hor_q_func
-        #self.Q_function_dict['vertical'] = ver_q_func
+        if self.algorithm == 'individual':
+            q_func = Agent(gamma=0.99, epsilon=1.0, alpha=0.00025, input_dims=(84,84,1),
+                       act_per_agent=2, num_agents=1, mem_size=mem_size, batch_size=32, replace_target=30000, q_next_dir="tmp/six/q_next", q_eval_dir="tmp/six/q_eval", test=True)
+            self.Q_function_dict['individual']= q_func
+
+        else:
+            # *********************Change this depending on the type of factor chosen in case of Transfer Planning approach*****************************
+            
+            ver_q_func = Agent(gamma=0.99, epsilon=1.0, alpha=0.00025, input_dims=(84,84,1),
+                       act_per_agent=2, num_agents=2, mem_size=mem_size, batch_size=32, replace_target=30000, q_next_dir="tmp/six/q_next", q_eval_dir="tmp/six/q_eval", test=True)
+            self.Q_function_dict['vertical'] = ver_q_func
 
     def model_load_type(self, modeltype:str, modelnr: str):
         path = os.getcwd()
-        modelname = 'tmp/'+ str(modeltype) + '/q_eval/' + str(modeltype) + '_deepqnet.ckpt-' + str(modelnr)
+        if modeltype==None:
+            modelname = 'tmp/' + 'q_eval/' + 'deepqnet.ckpt-' + str(modelnr)
+        else:
+            modelname = 'tmp/'+ str(modeltype) + '/q_eval/' + str(modeltype) + '_deepqnet.ckpt-' + str(modelnr)
         return os.path.join(path, modelname)
 
     def load_models(self):
-        hor_checkpoint_file = self.model_load_type(modelnr=110000, modeltype='multi')
-        ver_checkpoint_file = self.model_load_type(modelnr=110000, modeltype='vertical')
-        self.Q_function_dict['horizontal'].load_models(hor_checkpoint_file)
-        #self.Q_function_dict['vertical'].load_models(ver_checkpoint_file)
+        if self.algorithm == 'individual':
+            individual_checkpoint_file = self.model_load(modelnr=self.modelnr['individual'], modeltype=None)
+            self.Q_function_dict['individual'].load_models(individual_checkpoint_file)
+        else:
+            ver_checkpoint_file = self.model_load_type(modelnr=self.modelnr['vertical'], modeltype='vertical')
+            self.Q_function_dict['vertical'].load_models(ver_checkpoint_file)
 
     def reset(self):
         for keys in self.Q_function_dict.keys():
             self.Q_function_dict[keys].reset()
    
-    def get_q_value(self, key, local_state):
+    def get_q_value(self, local_state):
         '''returns q_value for the factored agents based on their local state'''
-        q_value = self.Q_function_dict[key].get_qval(local_state)
+        if self.algorithm == 'individual':
+            q_value = self.Q_function_dict['inidividual'].get_qval(local_state)
+        else:
+            q_value = self.Q_function_dict['vertical'].get_qval(local_state)
         return q_value	
 
     def store_exp(self, factored_exp):
@@ -91,6 +104,7 @@ class factor_graph():
 
     def b_coord(self, q_array):
         sum_q_value = []
+        #Considering the fact that the factored q value comprises only of two agents
         action_tuple = [i for i in it.product((0,1), repeat=2)]
         for i in range(len(self.action_list)):
             q_val = 0
@@ -107,6 +121,19 @@ class factor_graph():
         best_action = self.action_list[idx]
         sumo_act = self.act_to_dict(best_action)
         return  sum_q_value, best_action, sumo_act
+
+    def individual_coord(self, q_arr):
+        sum_q_value = []
+        for i in range(self.action_list):
+            all_actions = self.action_list[i]
+            q_val = 0
+            for index, val in all_actions:
+                q_val += q_arr[str(index)][val]
+            sum_q_value.append(q_val)
+        idx = np.argmax(sum_q_value)
+        best_action = self.action_list[idx]
+        sumo_act = self.act_to_dict(best_action)
+        return sum_q_value, best_action, sumo_act
   
     def act_to_dict(self, best_action):
         action = collections.OrderedDict()

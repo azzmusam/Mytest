@@ -81,7 +81,7 @@ class SumoGymAdapter(Env):
         self.factor_graph = self._parameters['factored_agents']
         self.n_factors = len(list(self.factor_graph.keys()))
         self.factored_coords = self._parameters['factored_coords']
-        self.pixelsPerMeter = self._parameters['pixelsPerMeter']
+        #self.pixelsPerMeter = self._parameters['pixelsPerMeter']
         self.testseed = list(self._parameters['test_seed'])
         self.seed_cntr = 0
     
@@ -129,14 +129,14 @@ class SumoGymAdapter(Env):
             logging.info("Starting SUMO environment...")
             self._startSUMO()
             # TODO: Wouter: make state configurable ("state factory")
-            self._state = FactoredLDMMatrixState(self.ldm, [self._parameters['box_bottom_corner'], self._parameters['box_top_corner']], factored_agents=self.factor_graph, factored_coords=self.factored_coords, pixelsPerMeter=self.pixelsPerMeter)
+            self._state = FactoredLDMMatrixState(self.ldm, [self._parameters['box_bottom_corner'], self._parameters['box_top_corner']], factored_agents=self.factor_graph, factored_coords=self.factored_coords)
             return self._observe(), average_travel_times, average_travel_time
 
         else:
             logging.info("Starting SUMO environment...")
             self._startSUMO()
             # TODO: Wouter: make state configurable ("state factory")
-            self._state = FactoredLDMMatrixState(self.ldm, [self._parameters['box_bottom_corner'], self._parameters['box_top_corner']], factored_agents=self.factor_graph, factored_coords=self.factored_coords, pixelsPerMeter=self.pixelsPerMeter)
+            self._state = FactoredLDMMatrixState(self.ldm, [self._parameters['box_bottom_corner'], self._parameters['box_top_corner']], factored_agents=self.factor_graph, factored_coords=self.factored_coords)
 
             return self._observe()
         

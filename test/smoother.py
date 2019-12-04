@@ -2,7 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib as mpl
-mpl.use('tkagg')
+mpl.use('Agg')
 import matplotlib.pyplot as plt
 plt.style.use('seaborn')
 
@@ -54,21 +54,22 @@ def traveltimeplotter(name: str, typ: str):
     print(len(i))
     j = [i for i in range(len(i))]
     fig, ax = plt.subplots()
-    ax.grid(color='grey', linewidth=0.25, alpha=0.5)
+    ax.grid(color='grey', linewidth=0.001, alpha=0.5)
     ax.set_title('Average Travel Time')
     ax.set_xlabel('Time Steps')
     ax.set_ylabel('Average Travel Time(sec)')
     plt.plot(j, i, '-k', label='Average Travel Time')
     plt.legend(loc='best')
+    plt.grid()
     plt.xticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
     fignam = str(typ) + 'Travel Time'
-    plt.savefig(fignam, dpi=300)
+    plt.savefig(fignam, dpi=200)
 
 def normalplotter(typ: str, title: str, xlabel: str, ylabel: str, name: str):
     path = os.getcwd()
     files = os.path.join(path, 'test_result', str(typ), str(name))
     data = pd.read_csv(files, header=None, nrows= 1000000)
-    data = data.rolling(4000, min_periods=1).mean()
+    #data = data.rolling(4000, min_periods=1).mean()
     i = data[0].values.tolist()
     j = [i for i in range(len(i))]
     fig, ax = plt.subplots()
@@ -85,7 +86,7 @@ def normalplotter(typ: str, title: str, xlabel: str, ylabel: str, name: str):
 if __name__=='__main__':
     
     path = os.getcwd()
-    files = os.path.join(path, 'test_result', 'vertical', 'traveltime470000.csv')
+    files = os.path.join(path, 'test_result', 'single', 'traveltime_220000.csv')
     data = pd.read_csv(files, header=None)
     tt = bestmodel(data)
     for i in range(len(tt)):
@@ -95,8 +96,8 @@ if __name__=='__main__':
     print(tt[idx])
     print(idx)
     
-    #normalplotter(typ='vertical', name='delay280000.csv', title='Delay per Time Step', xlabel='Time Steps', ylabel='Delay')
-    #traveltimeplotter(typ='vertical', name='traveltime280000.csv')
+    #normalplotter(typ='single', name='score_220000.csv', title='Reward per Time Step', xlabel='Time Steps', ylabel='Rewards')
+    traveltimeplotter(typ='single', name='traveltime_220000.csv')
     #normalplotter(typ='vertical', name='waitingtime280000.csv', title='Waiting Time per Time Step', xlabel='Time Steps', ylabel='Waiting Time')
     
     #normalplotter(typ='horizontal', name='delay200000.csv', title='Delay per Time Step', xlabel='Time Steps', ylabel='Delay')

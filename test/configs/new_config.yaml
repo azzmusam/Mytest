@@ -26,7 +26,8 @@ parameters:
                           1: 'horizontal',
                           2: 'vertical',
                           3: 'horizontal'}
-
+    factored_coords: {"0": [[4, 4], [1477, 994]],
+                      "1": [[518, 4], [1977, 994]]}
     seed: 56
 
 
