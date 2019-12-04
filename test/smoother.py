@@ -58,10 +58,11 @@ def traveltimeplotter(name: str, typ: str):
     ax.set_title('Average Travel Time')
     ax.set_xlabel('Time Steps')
     ax.set_ylabel('Average Travel Time(sec)')
-    plt.plot(j, i, '-k', linewidth=0.3, label='Average Travel Time')
+    plt.plot(j, i, '-k', linewidth=0.7, label='Average Travel Time')
     plt.legend(loc='best')
-    plt.grid()
-    plt.xticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
+    #plt.grid()
+    plt.xticks(np.arange(6), [0, 0.2, 0.4, 0.6, 0.8, 1.0])
+    plt.xlim(0,5)
     fignam = str(typ) + 'Travel Time'
     plt.savefig(fignam, dpi=300)
 
