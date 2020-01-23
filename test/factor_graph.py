@@ -13,20 +13,19 @@ class factor_graph():
     def __init__(self, factored_graph, num_agents):#, parameters, car_pr, factored_agent_type, modelnr, algorithm):
         self.factored_graph = factored_graph
         self.num_agents = num_agents
-        #self._parameters = parameters
-        self.index='vertical'
-        '''for keys in self._parameters['testmodelnr'].keys():
+        self._parameters = parameters
+        for keys in self._parameters['testmodelnr'].keys():
             self.index = keys
-        self.car_pr = car_pr'''
+        self.car_pr = car_pr
         # Num_agents should be the actual number of intersections even in the case of individual algorithm
-        '''self.factored_agent_type = factored_agent_type
+        self.factored_agent_type = factored_agent_type
         self.modelnr = modelnr
-        self.algorithm = algorithm'''
+        self.algorithm = algorithm
         self.num_factors = len(factored_graph.keys())
         self.act_per_agent = 2
         self.action_space = [i for i in range(self.act_per_agent)]
         self.num_actions = self.act_per_agent**self.num_agents
-        #self.generate_agents()
+        self.generate_agents()
         #self.load_models()
         self.set_action_list()
 

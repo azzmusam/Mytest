@@ -26,7 +26,7 @@ class experimentor():
                 parameters=yaml.safe_load(stream)['parameters']
             except yaml.YAMLError as exc:
                 print(exc)
-
+        self.i = 0
         #self.modelnumber = modelnr
         self.env = SumoGymAdapter(parameters)
         self.total_simulation = total_simulation
@@ -45,6 +45,7 @@ class experimentor():
                                          factored_agent_type=self._parameters['factored_agent_type'],
                                          modelnr = self._parameters['testmodelnr'],
                                          algorithm = self._parameters['coordination_algo'])
+        self.maxplus = maxplus(regular_factor=self._parameters['factored_agents'], agent_neighbour_combo=self._parameters['agent_neighbour_combo'], max_iter=30)
         if self._parameters['coordination_algo'] == 'maxplus':
             self.maxplus = maxplus(regular_factor=self._parameters['factored_agents'], agent_neighbour_combo=self._parameters['agent_neighbour_combo'], max_iter=self._parameters['max_iter'])
             print('USING MAXPLUS ALGORITHM FOR COORDINATION')
@@ -57,7 +58,7 @@ class experimentor():
 
     def tester(self):
         path = os.getcwd()
-        self.modelnumber=10000
+        #self.modelnumber=10000
         if self.modelnumber ==None:
             self.model = '0'
             '''if self.index == 'individual':
@@ -117,10 +118,10 @@ class experimentor():
                     print('LOADED CHECKPOINT:', filename)
 
                 elif self.index == 'vertical':
-                    #filename = 'two_' + str(self._parameters['car_pr']) + '_deepqnet.ckpt-' + str(self.model)
-                    filename = 'two_' + '0.4' + '_deepqnet.ckpt-' + str(self.model)
-                    #chkpt = os.path.join(*[path, 'tmp', 'two_intersection', str(self._parameters['car_pr']), 'q_eval', filename])
-                    chkpt = os.path.join(*[path, 'tmp', 'two_intersection', '0.4', 'q_eval', filename])
+                    filename = 'two_' + str(self._parameters['car_pr']) + '_deepqnet.ckpt-' + str(self.model)
+                    #filename = 'two_' + '0.4' + '_deepqnet.ckpt-' + str(self.model)
+                    chkpt = os.path.join(*[path, 'tmp', 'two_intersection', str(self._parameters['car_pr']), 'q_eval', filename])
+                    #chkpt = os.path.join(*[path, 'tmp', 'two_intersection', '0.4', 'q_eval', filename])
                     self.factor_graph.Q_function_dict['vertical'].load_models(chkpt)
                     print('LOADED CHECKPOINT:', filename)
 
@@ -187,7 +188,7 @@ class experimentor():
     def saver(self, data, name, iternumber):
         path = os.getcwd()
         filename = str(name) + str(iternumber) + '.csv'
-        pathname = os.path.join(*[path, 'results', self._parameters['scene'], str(self._parameters['car_pr']), self._parameters['coordination_algo'], 'trial', '10000', filename])
+        pathname = os.path.join(*[path, 'results', self._parameters['scene'], str(self._parameters['car_pr']), self._parameters['coordination_algo'], filename])
         #pathname = os.path.join(*[path, 'results', 'qvalues'])
         outfile = open(pathname, 'w')
         writer = csv.writer(outfile)
@@ -198,7 +199,7 @@ class experimentor():
         path = os.getcwd()
         for key in self.test_result.keys():
             filename = key + '.csv'
-            pathname = os.path.join(*[path, 'results', self._parameters['scene'], str(self._parameters['car_pr']), self._parameters['coordination_algo'], 'trial', '10000', filename])
+            pathname = os.path.join(*[path, 'results', self._parameters['scene'], str(self._parameters['car_pr']), self._parameters['coordination_algo'], filename])
             #pathname = os.path.join(*[path, 'results', 'qvalues'])
             #pathname = os.path.join(path, filename)
             if os.path.exists(os.path.dirname(pathname)):
@@ -229,10 +230,18 @@ class experimentor():
     def take_action(self, state_graph):
         q_arr = self.factor_graph.get_factored_Q_val(state_graph)
         if self._parameters['coordination_algo'] == 'brute':
+            self.i+=1
+            if self.i==50:
+                pdb.set_trace()
             start = time.process_time()
             sum_q_value, best_action, sumo_act = self.factor_graph.b_coord(q_arr)
+            self.maxplus.initialise_again()
+            q_arr = self.qarr_key_changer(q_arr)
+            start = time.process_time()
+            sumo_act, action_payoff_tup, diff, std = self.maxplus.max_plus_calculator(q_arr)
             #self.bc_qval.append(sum_q_value)
-            #print(sum_q_value)
+            print('BC:    ', sum_q_value, sumo_act)
+            print('MP:    ', action_payoff_tup,  sumo_act)
             self.algo_timer.append(time.process_time() - start)
         elif self._parameters['coordination_algo'] == 'maxplus':
             self.maxplus.initialise_again()
