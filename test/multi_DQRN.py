@@ -1,4 +1,5 @@
 import os
+import csv
 import numpy as np
 import tensorflow as tf
 import time
@@ -12,9 +13,9 @@ class DeepQNetwork(object):
     def __init__(self, lr, n_actions, name, fc1_dims=512, LSTM_DIM=256,
                  input_dims=(210, 160, 4), chkpt_dir="tmp/dqn"):
         config = tf.ConfigProto()
-        config.gpu_options.visible_device_list= '2,3'
-        config.gpu_options.allow_growth = True
-        #config.gpu_options.per_process_gpu_memory_fraction = 0.5
+        config.gpu_options.visible_device_list= '0'
+        #config.gpu_options.allow_growth = True
+        config.gpu_options.per_process_gpu_memory_fraction = 0.3
         #config.log_device_placement = True
         self.lr = lr
         self.name = name
@@ -27,12 +28,12 @@ class DeepQNetwork(object):
         self.build_network()
         self.sess.run(tf.global_variables_initializer())
         self.saver = tf.train.Saver(max_to_keep=150)
-        self.checkpoint_file = os.path.join(chkpt_dir, "three_deepqnet.ckpt")
+        self.checkpoint_file = os.path.join(chkpt_dir, "two_0.05_deepqnet.ckpt")
         self.params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
                                         scope=self.name)
         self.write_op = tf.summary.merge_all()
         dirname = os.path.dirname(__file__)
-        self.log = os.path.join(*[dirname, 'tmp', 'three','log_dir', self.name])
+        self.log = os.path.join(*[dirname, 'tmp', 'two_intersection/0.05','log_dir', self.name])
         if os.path.exists(self.log):
             print("output_results: ", str(self.log))
         else:
@@ -51,6 +52,7 @@ class DeepQNetwork(object):
             self.seq_len = tf.placeholder(tf.int32, name='sequence_length')
             self.batch_size = tf.placeholder(tf.int32, name='batch_size')
 
+            self.q = tf.placeholder(tf.int32, shape=[None], name='q_batch')
             # Create placeholders to input the hidden state values
             c_in = tf.placeholder(tf.float32, [None, self.LSTM_DIM], name='cell_state')
             h_in = tf.placeholder(tf.float32, [None, self.LSTM_DIM], name='h_state')
@@ -68,14 +70,14 @@ class DeepQNetwork(object):
 
             conv1 = tf.layers.conv2d(inputs=self.states, filters=16,
                                      kernel_size=(8, 8), strides=(4,4), name='conv1', padding='VALID',
-                                     kernel_initializer=tf.contrib.layers.variance_scaling_initializer(factor=2),use_bias=True, bias_initializer=tf.constant_initializer(0.01))
+                                     kernel_initializer=tf.contrib.layers.variance_scaling_initializer(factor=2), use_bias=True, bias_initializer=tf.constant_initializer(0.1))
             # TensorShape([Dimension(None), Dimension(44), Dimension(39), Dimension(32)])
 
             conv1_activated = tf.nn.relu(conv1)
 
             conv2 = tf.layers.conv2d(inputs=conv1_activated, filters=32,
                                      kernel_size=(4, 4), strides=(2,2), name='conv2', padding='VALID',
-                                     kernel_initializer=tf.contrib.layers.variance_scaling_initializer(factor=2), use_bias=True, bias_initializer=tf.constant_initializer(0.01))
+                                     kernel_initializer=tf.contrib.layers.variance_scaling_initializer(factor=2), use_bias=True, bias_initializer=tf.constant_initializer(0.1))
             # TensorShape([Dimension(None), Dimension(21), Dimension(18), Dimension(64)])
 
             conv2_activated = tf.nn.relu(conv2)
@@ -97,7 +99,7 @@ class DeepQNetwork(object):
             var1 = tf.get_variable('weights', (self.LSTM_DIM, self.n_actions), initializer=tf.contrib.layers.xavier_initializer(), trainable=True, 
                                                     regularizer=tf.contrib.layers.l2_regularizer(0.01))
 
-            var2 = tf.get_variable('biases', (self.n_actions,), trainable=True, initializer=tf.constant_initializer(0.01))
+            var2 = tf.get_variable('biases', (self.n_actions,), trainable=True, initializer=tf.constant_initializer(0.1))
 
             h = outputs[:,-1,:] 
 
@@ -105,7 +107,7 @@ class DeepQNetwork(object):
             tf.summary.histogram('Q_value', self.Q_values)
 
             self.q = tf.reduce_sum(tf.multiply(self.Q_values, self.actions), axis=1)
-
+        
             self.loss = tf.reduce_mean(tf.square(self.q_target - self.q))
     
             self.loss_sum = tf.summary.scalar("Loss", self.loss)
@@ -134,7 +136,7 @@ class DeepQNetwork(object):
 
 class Agent(object):
     def __init__(self, alpha, gamma, mem_size, epsilon, batch_size, num_agents, act_per_agent,
-                 replace_target=30000, input_dims=(210, 160, 4), q_next_dir="tmp/three/q_next", q_eval_dir="tmp/three/q_eval"):
+                 replace_target=30000, input_dims=(210, 160, 4), q_next_dir="tmp/two_intersection/0.05/q_next", q_eval_dir="tmp/two_intersection/0.05/q_eval"):
 
         self.num_agents = num_agents
         self.act_per_agent = act_per_agent
@@ -153,26 +155,34 @@ class Agent(object):
         self.q_eval = DeepQNetwork(alpha, self.n_actions, input_dims=input_dims,
                                    name='q_eval', chkpt_dir=q_eval_dir)
 
-        #self.q_next = DeepQNetwork(alpha, self.n_actions, input_dims=input_dims,
-         #                          name='q_next', chkpt_dir=q_next_dir)
+        self.q_next = DeepQNetwork(alpha, self.n_actions, input_dims=input_dims,
+                                 name='q_next', chkpt_dir=q_next_dir)
+
+        self.update_graph()
         self.create_memory()
+        self.results()
+        #self.test_initialiser()
         self.all_list = []
         for j in it.product(tuple(self.action_space), repeat = self.num_agents):
             self.all_list.append(j)
 
+    def test_initialiser(self):
+        c_init = np.zeros((1, self.LSTM_DIM), np.float32)
+        h_init = np.zeros((1, self.LSTM_DIM), np.float32)
+        self.state_out = (c_init, h_init)
+
     def create_memory(self):
-        #self.state_memory = np.zeros((self.mem_size, *self.input_dims))
+        self.state_memory = np.zeros((self.mem_size, *self.input_dims))
         
-        #self.new_state_memory = np.zeros((self.mem_size, *self.input_dims))
-        #self.action_memory = np.zeros((self.mem_size, self.n_actions),
-          #                            dtype=np.int8)
-        #self.reward_memory = np.zeros(self.mem_size)
-        #self.terminal_memory = np.zeros(self.mem_size, dtype=np.int8)
+        self.new_state_memory = np.zeros((self.mem_size, *self.input_dims))
+        self.action_memory = np.zeros((self.mem_size, self.n_actions),
+                                      dtype=np.int8)
+        self.reward_memory = np.zeros(self.mem_size)
+        self.terminal_memory = np.zeros(self.mem_size, dtype=np.int8)
 
         c_init = np.zeros((1, self.LSTM_DIM), np.float32)
         h_init = np.zeros((1, self.LSTM_DIM), np.float32)
         self.state_out = (c_init, h_init)
-    
 
     def action_hot_encoder(self, actions, all_list):
         action = np.zeros((self.n_actions))
@@ -181,20 +191,17 @@ class Agent(object):
             if val == value_list:
                 action[key] = 1.
                 break 
-
         return action
 
 
     def action_decoder(self, encoded_action, all_list):
         index = (list(np.where(encoded_action==1.))[0])[0]
         decoded_action = collections.OrderedDict()
-
         for i in range(len(encoded_action)):
             try:
                 decoded_action[str(i)] = all_list[index][i]
             except:
                 break
-
         return decoded_action
 
 
@@ -204,10 +211,8 @@ class Agent(object):
 
         self.state_memory[index] = state
         self.reward = reward
-
         self.action_memory[index] = self.action_hot_encoder(action, self.all_list)
         self.reward_memory[index] = reward['result']
-
         self.new_state_memory[index] = state_
         self.terminal_memory[index] = terminal
 
@@ -237,8 +242,7 @@ class Agent(object):
                                                   self.q_eval.state_in: self.state_out,
                                                   self.q_eval.seq_len: 1,
                                                   self.q_eval.batch_size: 1})
-            lstm_c, lstm_h = lstm_state
-    
+            lstm_c, lstm_h = lstm_state     
             self.state_out = (lstm_c[:1, :], lstm_h[:1, :])
             action = np.random.choice(np.flatnonzero(actions == actions.max()))
             #action = np.argmax(actions)
@@ -272,7 +276,6 @@ class Agent(object):
     def get_sequence(self, index, collection):
         stop = index + 1 
         start = stop - self.seq_length
-        
         if start < 0 and stop >= 0:
             try:
                 seq = np.vstack((collection[start:], collection[:stop]))
@@ -283,8 +286,17 @@ class Agent(object):
 
         if len(seq.shape) != len(collection.shape):
             seq = np.reshape(seq, (-1,))
-
         return seq
+
+    def randomactionselector(self, qval):
+        indices = []
+        for i in range(qval.shape[0]):
+            indices.append(np.random.choice(np.flatnonzero(qval[i]==qval[i].max())))
+        return indices
+
+    def results(self):
+        self.loss_list = []
+        self.qval_list = []
 
     def learn(self):
         if self.mem_cntr % self.replace_target == 0:
@@ -299,28 +311,43 @@ class Agent(object):
                                                  self.q_eval.state_in: state,
                                                  self.q_eval.seq_len: self.seq_length,
                                                  self.q_eval.batch_size: self.batch_size})
-
-        q_eval_next = self.q_eval.sess.run(self.q_eval.Q_values,
+  
+        '''q_eval_next = self.q_eval.sess.run(self.q_eval.Q_values,
                                            feed_dict={self.q_eval.states: next_state_batch,
                                                       self.q_eval.state_in: state,
                                                       self.q_eval.seq_len: self.seq_length,
-                                                      self.q_eval.batch_size: self.batch_size})
+                                                      self.q_eval.batch_size: self.batch_size})'''
 
-        index_best_action = np.argmax(q_eval_next, axis=1)
-
+        #index_best_action = np.argmax(q_eval_next, axis=1)
+        #index_best_action = np.random.choice(np.flatnonzero(q_eval_next == q_eval_next.max()))
+        
         q_next = self.q_next.sess.run(self.q_next.Q_values,
                                       feed_dict={self.q_next.states: next_state_batch,
                                                  self.q_next.state_in: state,
                                                  self.q_next.seq_len: self.seq_length,
                                                  self.q_next.batch_size: self.batch_size})
-
-
+       
+        #index_best_action = self.randomactionselector(q_next)
+        index_best_action = self.randomactionselector(q_next)
         idx = np.arange(self.batch_size)
-        q_target = reward_batch + \
-            self.gamma*(q_next[idx, index_best_action])*(1 - terminal_batch)
+
+        q_target = reward_batch + self.gamma*(q_next[idx, index_best_action])*(1-terminal_batch)
+
+        '''q_target = reward_batch + \
+            self.gamma*(q_next[idx, index_best_action])*(1 - terminal_batch)'''
+
+        #self.q = np.sum(np.multiply(q_eval, action_batch), axis=1)
  
-        if self.mem_cntr % 400==0:
-            _, summary = self.q_eval.sess.run([self.q_eval.train_op, self.q_eval.write_op],
+        if self.mem_cntr % 100==0:
+            '''loss, _, summary = self.q_eval.sess.run([self.q_eval.loss, self.q_eval.train_op, self.q_eval.write_op],
+                                           feed_dict={self.q_eval.q: self.q,
+                                                      self.q_eval.q_target: q_target,
+                                                      self.q_eval.state_in: state,
+                                                      self.q_eval._reward: self.reward['result'],
+                                                      self.q_eval._waitingtime: self.reward['total_waiting'],
+                                                      self.q_eval._delay: self.reward['total_delay']})'''
+                                                      
+            loss, _, summary = self.q_eval.sess.run([self.q_eval.loss, self.q_eval.train_op, self.q_eval.write_op],
                                            feed_dict={self.q_eval.states: state_batch,
                                                       self.q_eval.actions: action_batch,
                                                       self.q_eval.q_target: q_target,
@@ -329,10 +356,22 @@ class Agent(object):
                                                       self.q_eval.state_in: state,self.q_eval._reward: self.reward['result'],
                                                       self.q_eval._waitingtime: self.reward['total_waiting'],
                                                       self.q_eval._delay: self.reward['total_delay']})
+
+            self.loss_list.append(loss)
             self.q_eval.writer.add_summary(summary)
             self.q_eval.writer.flush()
-        else:
-            _ = self.q_eval.sess.run(self.q_eval.train_op,
+
+        else: 
+ 
+            '''loss, _ = self.q_eval.sess.run([self.q_eval.loss, self.q_eval.train_op],
+                                     feed_dict={self.q_eval.q: self.q,
+                                            self.q_eval.q_target: q_target,
+                                            self.q_eval.state_in: state,
+                                            self.q_eval._reward: self.reward['result'],
+                                            self.q_eval._waitingtime: self.reward['total_waiting'],
+                                            self.q_eval._delay: self.reward['total_delay']})'''
+
+            loss, _ = self.q_eval.sess.run([self.q_eval.loss, self.q_eval.train_op],
                                      feed_dict={self.q_eval.states: state_batch,
                                             self.q_eval.actions: action_batch,
                                             self.q_eval.q_target: q_target,
@@ -342,6 +381,23 @@ class Agent(object):
                                             self.q_eval._reward: self.reward['result'],
                                             self.q_eval._waitingtime: self.reward['total_waiting'],
                                             self.q_eval._delay: self.reward['total_delay']})
+           
+            self.loss_list.append(loss)
+
+        if self.mem_cntr % 10000 == 0:
+            iteration = self.mem_cntr + 440000
+            name = 'loss_' + str(iteration)        
+            self.saver(self.loss_list, name)
+
+    def saver(self, data, name):
+        path = os.getcwd()
+        name = str(name)
+        filename = 'test_result/'+ 'two_intersection/0.05/loss/' + name + '.csv'
+        pathname = os.path.join(path, filename)
+        outfile = open(pathname, 'w')
+        writer = csv.writer(outfile)
+        writer.writerows(map(lambda x:[x], data))
+        outfile.close()
 
     def test(self, state):
         actions, lstm_state = self.q_eval.sess.run([self.q_eval.Q_values, self.q_eval.cell_state],
@@ -366,9 +422,9 @@ class Agent(object):
         self.q_eval.save_checkpoint(epi_num = self.episode_number)
         self.q_next.save_checkpoint(epi_num = self.episode_number)
 
-    def load_models(self, q_eval_checkpoint):
+    def load_models(self, q_eval_checkpoint, q_next_checkpoint):
         self.q_eval.load_checkpoint(q_eval_checkpoint)
-        #self.q_next.load_checkpoint(q_next_checkpoint)
+        self.q_next.load_checkpoint(q_next_checkpoint)
 
     def update_graph(self):
         t_params = self.q_next.params

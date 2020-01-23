@@ -14,7 +14,7 @@ class DeepQNetwork(object):
         self.lr = lr
         self.name = name
         config = tf.ConfigProto()
-        #config.gpu_options.visible_device_list = "2,3"
+        config.gpu_options.visible_device_list = "3"
         #config.gpu_options.allow_growth = True
         #config.gpu_options.per_process_gpu_memory_fraction = 0.4
         self.LSTM_DIM = LSTM_DIM
@@ -35,7 +35,7 @@ class DeepQNetwork(object):
          #   print("output_results: ", str(self.log))
         #else:
             #os.mkdir(self.log)
-        self.make_log_dir()
+        #self.make_log_dir()
         #self.writer = tf.summary.FileWriter(self.log, self.sess.graph)
 
     def make_log_dir(self):
@@ -146,7 +146,7 @@ class DeepQNetwork(object):
 
 class Agent(object):
     def __init__(self, alpha, gamma, mem_size, epsilon, batch_size, num_agents, act_per_agent,
-                 replace_target=3000, input_dims=(210, 160, 4), q_next_dir="tmp/q_next", q_eval_dir="tmp/q_eval", test= False):
+                 replace_target=30000, input_dims=(210, 160, 4), q_next_dir="tmp/q_next", q_eval_dir="tmp/q_eval", test= True):
         self.num_agents = num_agents
         self.act_per_agent = act_per_agent
         self.input_dims = input_dims
@@ -295,11 +295,11 @@ class Agent(object):
                                                  self.q_eval.seq_len: self.seq_length,
                                                  self.q_eval.batch_size: self.batch_size})
 
-        q_eval_next = self.q_eval.sess.run(self.q_eval.Q_values,
+        '''q_eval_next = self.q_eval.sess.run(self.q_eval.Q_values,
                                            feed_dict={self.q_eval.states: next_state_batch,
                                                       self.q_eval.state_in: state,
                                                       self.q_eval.seq_len: self.seq_length,
-                                                      self.q_eval.batch_size: self.batch_size})
+                                                      self.q_eval.batch_size: self.batch_size})'''
 
         index_best_action = np.argmax(q_eval_next, axis=1)
 
@@ -346,7 +346,8 @@ class Agent(object):
                                                   self.q_eval.batch_size: 1})
         lstm_c, lstm_h = lstm_state
         self.state_out = (lstm_c[:1, :], lstm_h[:1, :])
-        action = np.argmax(actions)
+        #action = np.argmax(actions)
+        action = np.random.choice(np.flatnonzero(actions == actions.max()))
         action_ht = np.zeros((self.n_actions))
         action_ht[action] = 1.	
         return self.action_decoder(action_ht, self.all_list) 

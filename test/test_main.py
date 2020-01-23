@@ -1,5 +1,5 @@
 import aienvs
-from multi_DQRN import DeepQNetwork, Agent
+from improved_DQRN import DeepQNetwork, Agent
 import yaml
 import logging
 import pdb
@@ -14,7 +14,7 @@ path = os.getcwd()
 def saver(data, name, iternr):
     path = os.getcwd()
     name = str(name)
-    filename = 'test_result/single/'+ name + '_' + str(iternr) +'.csv'
+    filename = 'test_result/two_intersection/0.2/test/'+ name + '_' + str(iternr) +'.csv'
     pathname = os.path.join(path, filename)
     outfile = open(pathname, 'w')
     writer = csv.writer(outfile)
@@ -27,7 +27,7 @@ def save(test_result, iternr):
 def fileinitialiser(test_result, i):
     path = os.getcwd()
     for key in test_result.keys():
-        filename = 'test_result/single/'+ key + '_' + str(i)  +'.csv'
+        filename = 'test_result/two_intersection/0.2/test/'+ key + '_' + str(i)  +'.csv'
         pathname = os.path.join(path, filename)
         with open(pathname, "w") as my_empty_csv:
             pass
@@ -53,7 +53,7 @@ if __name__ == '__main__':
     logger.setLevel(logging.INFO)
     logging.info("Starting test_traffic_new")
 
-    with open("configs/new_config.yaml", 'r') as stream:
+    with open("configs/vertical_config.yaml", 'r') as stream:
         try:
             parameters = yaml.safe_load(stream)['parameters']
         except yaml.YAMLError as exc:
@@ -62,7 +62,7 @@ if __name__ == '__main__':
     env = SumoGymAdapter(parameters)
     mem_size = None
     agent = Agent(gamma=0.99, epsilon=1.0, alpha=0.00025, input_dims=(84,84,1),
-                  act_per_agent=2, num_agents=1, mem_size=mem_size, batch_size=32)
+                  act_per_agent=2, num_agents=2, mem_size=mem_size, batch_size=32)
 
     total_number_simulation = 8
     stack_size = 1
@@ -77,8 +77,35 @@ if __name__ == '__main__':
 
     test_result = result_initialiser()
     path = os.getcwd()
+
+    for i in range(total_number_simulation):
+        done=False
+        env.reset_test_cntr()
+        if i > 0:
+            observation, average_train_times, average_train_time = env.reset(i)
+            test_result['traveltime'].append(average_train_time)
+            print(test_result['traveltime'])
+        else:
+            observation= env.reset()
+        observation, stacked_state = stack_frames(stacked_frames=None, frame=observation, buffer_size=stack_size)
+        agent.reset()
+        while not done:
+                action = agent.test(stacked_state)
+                observation_, reward, done, info = env.step(action)
+                print(reward['result'])
+                observation_, stacked_state_ = stack_frames(stacked_frames=observation, frame=observation_, buffer_size=stack_size)
+                test_result['score'].append(reward['result'])
+                test_result['delay'].append(reward['total_delay'])
+                test_result['waitingtime'].append(reward['total_waiting'])
+                observation = observation_
+                stacked_state = stacked_state_
+
+    save(test_result, 00)
+    observation, average_train_times, average_train_time = env.reset(i)
+    test_result['traveltime'].append(average_train_time)
+    print(test_result['traveltime'])
     
-    for i in range(10000, 1000000, 10000):
+    for i in range(10000, 1100000, 10000):
         env.reset_test_cntr()
         if i>10000:
             observation, average_train_times, average_train_time = env.reset(i)
@@ -92,8 +119,8 @@ if __name__ == '__main__':
         agent.reset()
 
         try:
-            filename = 'deepqnet.ckpt-' + str(i)
-            chkpt = os.path.join(*[path, 'tmp', 'q_eval', filename])
+            filename = 'two_0.2_deepqnet.ckpt-' + str(i)
+            chkpt = os.path.join(*[path, 'tmp', 'two_intersection/0.2', 'q_eval', filename])
             agent.load_models(chkpt)
             print('LOADED CHECKPOINT:', filename)
         except:

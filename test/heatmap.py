@@ -5,7 +5,7 @@ import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sb
-
+import pandas as pd
 data = np.array([[119, 174, 171, 306],
                 [224, 170, 227, 211],
                 [181, 206, 1089, 2709]])
@@ -18,15 +18,27 @@ data2 = np.array([[186.0545, 144.6505, 318.8873, 202.2994],
                   [121.8016, 2396.5137, 2706.6440, 400.5080],
                   [134.9009, 185.3210, 5018.1919, 203.1913]])
 
-plt.subplots(figsize=(20, 20))
+#plt.subplots(figsize=(7, 7))
 #sb.palplot(sb.color_palette("ch:2.5,-.2,dark=.3"))
-heatmap1 = sb.heatmap(data, annot=True, cmap="YlGnBu", cbar_kws={'label': 'Average Travel Time'})
-#heatmap2 = sb.heatmap(data1, )
-#heatmap3 = sb.heatmap(data2, )
-plt.xticks(np.arange(4), [3, 4, 6, 8])
-plt.yticks(np.arange(3), [0.4, 0.2, 0.05])
-sb.set(font_scale=0.1)
-plt.xlabel('Number of Traffic Intersections')
-plt.ylabel('Traffic Congestion')
-plt.savefig('Brute_HM', dpi=300)
+#heatmap1 = sb.heatmap(data, annot=True, fmt="d", cmap="YlGnBu", cbar_kws={'label': 'Average Travel Time'})
+#heatmap2 = sb.heatmap(data1, annot=True, fmt=".2f", cmap="YlGnBu", cbar_kws={'label': 'Average Travel Time'})
+#heatmap3 = sb.heatmap(data2, annot=True, fmt=".2f", cmap="YlGnBu", cbar_kws={'label': 'Average Travel Time'})
+#plt.xticks(np.arange(4)+0.5, [3, 4, 6, 8], va="center")
+#plt.yticks(np.arange(3)+0.5, [0.05, 0.2, 0.4], va="center")
+#sb.set(font_scale=1)
+#plt.xlabel('Number of Traffic Intersections')
+#plt.ylabel('Traffic Congestion')
+#plt.savefig('Individual_HM', dpi=300)
+
+import os
+path = os.getcwd()
+filename = os.path.join(path, 'test_result/single/0.05/final_score_0.05.csv')
+data = pd.read_csv(filename, header=None, nrows= 1000000)
+#data['reward'] = data
+#data['x'] = data['reward'].index
+data.head()
+#sbplot = sb.tsplot(x='x', y='reward', ci='std', kind="line", data=data)
+sbplot = sb.tsplot(data=data)
+sbplot.savefig("Lowest_single_reward.png")
+
 

@@ -1,4 +1,5 @@
 import os
+import time
 import sys
 import numpy as np
 from improved_DQRN import Agent
@@ -8,20 +9,25 @@ import collections
 import tensorflow as tf
 
 class factor_graph():
-    
-    def __init__(self, factored_graph, num_agents, factored_agent_type, modelnr, algorithm):
+   
+    def __init__(self, factored_graph, num_agents):#, parameters, car_pr, factored_agent_type, modelnr, algorithm):
         self.factored_graph = factored_graph
         self.num_agents = num_agents
+        #self._parameters = parameters
+        self.index='vertical'
+        '''for keys in self._parameters['testmodelnr'].keys():
+            self.index = keys
+        self.car_pr = car_pr'''
         # Num_agents should be the actual number of intersections even in the case of individual algorithm
-        self.factored_agent_type = factored_agent_type
+        '''self.factored_agent_type = factored_agent_type
         self.modelnr = modelnr
-        self.algorithm = algorithm
+        self.algorithm = algorithm'''
         self.num_factors = len(factored_graph.keys())
         self.act_per_agent = 2
         self.action_space = [i for i in range(self.act_per_agent)]
         self.num_actions = self.act_per_agent**self.num_agents
-        self.generate_agents()
-        self.load_models()
+        #self.generate_agents()
+        #self.load_models()
         self.set_action_list()
 
     def set_action_list(self):
@@ -49,28 +55,45 @@ class factor_graph():
                        act_per_agent=2, num_agents=1, mem_size=mem_size, batch_size=32, replace_target=30000, q_next_dir="tmp/six/q_next", q_eval_dir="tmp/six/q_eval", test=True)
             self.Q_function_dict['individual']= q_func
 
-        else:
+        elif self.index == 'vertical':
             # *********************Change this depending on the type of factor chosen in case of Transfer Planning approach*****************************
             
             ver_q_func = Agent(gamma=0.99, epsilon=1.0, alpha=0.00025, input_dims=(84,84,1),
                        act_per_agent=2, num_agents=2, mem_size=mem_size, batch_size=32, replace_target=30000, q_next_dir="tmp/six/q_next", q_eval_dir="tmp/six/q_eval", test=True)
             self.Q_function_dict['vertical'] = ver_q_func
 
+        else:
+            three_q_func = Agent(gamma=0.99, epsilon=1.0, alpha=0.00025, input_dims=(84,84,1),
+                      act_per_agent=2, num_agents=3, mem_size=mem_size, batch_size=32, replace_target=30000, q_next_dir="tmp/six/q_next", q_eval_dir="tmp/six/q_eval", test=True)
+            self.Q_function_dict['three'] = three_q_func
+
+
     def model_load_type(self, modeltype:str, modelnr: str):
         path = os.getcwd()
         if modeltype==None:
+            #try:
+             #   modelname = 'tmp/' + 'single/' + str(self.car_pr) + '/q_eval/' + 'single_' + str(self.car_pr) + '_deepqnet.ckpt-' + str(modelnr) 
+            #except:
             modelname = 'tmp/' + 'q_eval/' + 'deepqnet.ckpt-' + str(modelnr)
         else:
+            #try:
+             #   modelname = 'tmp/'+ str(modeltype) + '/'  + str(self.car_pr) + '/q_eval/' + str(modeltype) + '_' + str(self.car_pr)  + '_deepqnet.ckpt-' + str(modelnr)
+            #except:
             modelname = 'tmp/'+ str(modeltype) + '/q_eval/' + str(modeltype) + '_deepqnet.ckpt-' + str(modelnr)
         return os.path.join(path, modelname)
 
     def load_models(self):
         if self.algorithm == 'individual':
-            individual_checkpoint_file = self.model_load(modelnr=self.modelnr['individual'], modeltype=None)
+            individual_checkpoint_file = self.model_load_type(modelnr=self.modelnr['individual'], modeltype=None)
             self.Q_function_dict['individual'].load_models(individual_checkpoint_file)
-        else:
+        elif self.index == 'vertical':
             ver_checkpoint_file = self.model_load_type(modelnr=self.modelnr['vertical'], modeltype='vertical')
             self.Q_function_dict['vertical'].load_models(ver_checkpoint_file)
+        else:
+            #three_checkpoint_file = self.model_load_type(modelnr=self.modelnr['three'], modeltype='three')
+            path = os.getcwd()
+            three_checkpoint_file = os.path.join(path, 'tmp/three/q_eval', 'three_deepqnet.ckpt-260000')
+            self.Q_function_dict['three'].load_models(three_checkpoint_file)
 
     def reset(self):
         for keys in self.Q_function_dict.keys():
@@ -79,9 +102,11 @@ class factor_graph():
     def get_q_value(self, local_state):
         '''returns q_value for the factored agents based on their local state'''
         if self.algorithm == 'individual':
-            q_value = self.Q_function_dict['inidividual'].get_qval(local_state)
-        else:
+            q_value = self.Q_function_dict['individual'].get_qval(local_state)
+        elif self.index == 'vertical':
             q_value = self.Q_function_dict['vertical'].get_qval(local_state)
+        else:
+            q_value = self.Q_function_dict['three'].get_qval(local_state)
         return q_value	
 
     def store_exp(self, factored_exp):
@@ -105,7 +130,10 @@ class factor_graph():
     def b_coord(self, q_array):
         sum_q_value = []
         #Considering the fact that the factored q value comprises only of two agents
-        action_tuple = [i for i in it.product((0,1), repeat=2)]
+        if self.index == 'vertical':
+            action_tuple = [i for i in it.product((0,1), repeat=2)]
+        else:
+            action_tuple = [i for i in it.product((0,1), repeat=3)]
         for i in range(len(self.action_list)):
             q_val = 0
             all_actions = self.action_list[i]
@@ -117,42 +145,79 @@ class factor_graph():
                         break
                 q_val += q_array[keys][0][index]
             sum_q_value.append(q_val)
-        idx = np.argmax(sum_q_value)
+        idx = np.random.choice(np.flatnonzero(np.asarray(sum_q_value)==np.asarray(sum_q_value).max()))
         best_action = self.action_list[idx]
         sumo_act = self.act_to_dict(best_action)
-        return  sum_q_value, best_action, sumo_act
+        return  sum_q_value[idx], best_action, sumo_act
 
     def individual_coord(self, q_arr):
-        sum_q_value = []
-        for i in range(self.action_list):
-            all_actions = self.action_list[i]
-            q_val = 0
-            for index, val in all_actions:
-                q_val += q_arr[str(index)][val]
-            sum_q_value.append(q_val)
-        idx = np.argmax(sum_q_value)
-        best_action = self.action_list[idx]
-        sumo_act = self.act_to_dict(best_action)
-        return sum_q_value, best_action, sumo_act
+        best_action = collections.OrderedDict()
+        for keys in q_arr.keys():
+            index = np.random.choice(np.flatnonzero(q_arr[keys] == q_arr[keys].max()))
+            best_action[keys] = index
+        return best_action
   
     def act_to_dict(self, best_action):
         action = collections.OrderedDict()
-        for i in range(len(best_action)):
-            action[str(i)]= best_action[i]
+        for indexx, val in enumerate(best_action):
+            action[str(indexx)] = val
         return action           
 
  
 if __name__=="__main__":
     import numpy as np
-    factored_agents= {0: ['0','1'],
-                      1: ['1','2'],
-                      2: ['2','3'],
-                      3: ['3','0']}
+    import csv
+    '''factored_agents= {"0": [0, 1],
+                      "1": [2, 3],
+                      "2": [0, 2],
+                      "3": [1, 3]}'''
     
-    fg = factor_graph(factored_agents)
-    q_array = np.random.randint(45, size=(4,4))
+    def saver(data, name, iternumber):
+        path = os.getcwd()
+        filename = str(name) + str(iternumber) + '.csv'
+        pathname = os.path.join(*[path, 'algo_result', 'brute', filename])
+        #pathname = os.path.join(*[path, 'results', 'qvalues'])
+        outfile = open(pathname, 'w')
+        writer = csv.writer(outfile)
+        writer.writerows(map(lambda x:[x], data))
+        outfile.close()
 
-    fg.brute_coordination(q_array)     
-        
-            
-                
+
+    #fg = factor_graph(factored_agents, 6)
+    #q_val = {'0': np.array([[0.5488135 , 0.71518937, 0.60276338, 0.54488318]]), '1': np.array([[0.4236548 , 0.64589411, 0.43758721, 0.891773  ]]), '2': np.array([[0.96366276, 0.38344152, 0.79172504, 0.52889492]]), '3': np.array([[0.56804456, 0.92559664, 0.07103606, 0.0871293 ]])}
+
+
+    '''factored_agents= {"0": [0, 1],
+                      "1": [1, 2],
+                      "2": [3, 4],
+                      "3": [4, 5],
+                      "4": [0, 3],
+                      "5": [1, 4],
+                      "6": [2, 5]}
+
+    q_val = {'0': np.array([[0.5488135 , 0.71518937, 0.60276338, 0.54488318]]), '1': np.array([[0.4236548 , 0.64589411, 0.43758721, 0.891773  ]]), '2': np.array([[0.96366276, 0.38344152, 0.79172504, 0.52889492]]), '3': np.array([[0.56804456, 0.92559664, 0.07103606, 0.0871293 ]]), '4': np.array([[0.0202184 , 0.83261985, 0.77815675, 0.87001215]]), '5': np.array([[0.97861834, 0.79915856, 0.46147936, 0.78052918]]), '6': np.array([[0.11827443, 0.63992102, 0.14335329, 0.94466892]])}'''
+
+
+    factored_agents= {"0": [0, 1],
+                      "1": [1, 2],
+                      "2": [2, 3],
+                      "3": [4, 5],
+                      "4": [5, 6],
+                      "5": [6, 7],
+                      "6": [0, 4],
+                      "7": [1, 5],
+                      "8": [2, 6],
+                      "9": [3, 7]}
+
+    q_val = {'0': np.array([[0.5488135 , 0.71518937, 0.60276338, 0.54488318]]), '1': np.array([[0.4236548 , 0.64589411, 0.43758721, 0.891773  ]]), '2': np.array([[0.96366276, 0.38344152, 0.79172504, 0.52889492]]), '3': np.array([[0.56804456, 0.92559664, 0.07103606, 0.0871293 ]]), '4': np.array([[0.0202184 , 0.83261985, 0.77815675, 0.87001215]]), '5': np.array([[0.97861834, 0.79915856, 0.46147936, 0.78052918]]), '6': np.array([[0.11827443, 0.63992102, 0.14335329, 0.94466892]]), '7': np.array([[0.64589411, 0.96366276, 0.87001215, 0.07103606]]), '8': np.array([[0.71518937, 0.56804456, 0.83261985, 0.07103606]]),'9': np.array([[0.46147936, 0.14335329, 0.92559664, 0.5488135]])}
+
+    fg = factor_graph(factored_agents, 8)
+
+    time_list = []
+    for i in range(10000):
+        start = time.process_time()
+        q_value, best_action, act = fg.b_coord(q_val)
+        time_list.append(time.process_time() - start)
+
+    saver(time_list, 'eight_time_', 10000)
+        #print(q_value, best_action, act)

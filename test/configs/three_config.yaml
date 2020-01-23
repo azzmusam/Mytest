@@ -1,12 +1,12 @@
 parameters:
     skip_frames: 1
-    box_bottom_corner: [1,1]    # [4, 4] 
-    box_top_corner: [1999, 998] # [1995, 994]  
+    box_bottom_corner: [4,4]    # [4, 4] 
+    box_top_corner: [1995, 994]     #[1977, 994] #[1995, 994]  
    
     y_t: 4 # yellow light traffic time
 
-    resolutionInPixelsPerMeterX: 0.042   # 0.057 for testing with three_padder  
-    resolutionInPixelsPerMeterY: 0.084  #0.085 for testing with three_padder
+    resolutionInPixelsPerMeterX: 0.042 #0.0425 #0.057 
+    resolutionInPixelsPerMeterY: 0.085 #0.085  
 
     scaling_factor: 1 # Used to scale the rewards, but for now set to 1.
 
@@ -37,11 +37,11 @@ parameters:
     factored_agent_type: {"0": 'horizontal',
                           "1": 'horizontal'}
    
-    testmodelnr: {'vertical': 110000}
+    testmodelnr: {'vertical': 390000}
 
     seed: 56
 
-    tripinfofolder: 'three_intersection'
+    tripinfofolder: 'three_intersection/0.4'
 
     test: True
     test_seed: [16753, 35821, 9675, 2193, 52120, 70142, 67371, 4470, 78146, 69491, 44398, 66521, 88094, 71935, 90747, 32224, 30813, 15315, 71678, 38054, 6603, 1548, 47881, 81064, 21234, 12045, 47394, 64234, 55742, 76628]  

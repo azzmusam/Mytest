@@ -41,8 +41,8 @@ parameters:
 # These are used inside sumphlper.py's generate_randomized_route() function in order to 
 # generate routes.
 
-    car_pr: 0.2
-    car_tm: 500
+    car_pr: 0.05
+    car_tm: 3600
 
 # These are used to generate vehicle for each possible route in the scenario and writes
 # them to a file and returns the location of the sumocfg file.
@@ -52,7 +52,7 @@ parameters:
 # This is used to define the directory where we save the file for route and configuration.
 # Its inside the scenario directory.
 
-    gui: True
+    gui: False
     type: 'byCorners'
     speed_dev: 0.0
     verbose: 0
