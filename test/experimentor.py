@@ -20,8 +20,8 @@ class experimentor():
     
     def __init__(self, total_simulation=8):
         logging.info("Starting test_traffic_new")
-        with open("configs/testconfig.yaml", 'r') as stream:
-        #with open("configs/eight_twofactor_config.yaml", 'r') as stream:
+        #with open("configs/testconfig.yaml", 'r') as stream:
+        with open("configs/eight_twofactor_config.yaml", 'r') as stream:
             try:
                 parameters=yaml.safe_load(stream)['parameters']
             except yaml.YAMLError as exc:
@@ -45,7 +45,7 @@ class experimentor():
                                          factored_agent_type=self._parameters['factored_agent_type'],
                                          modelnr = self._parameters['testmodelnr'],
                                          algorithm = self._parameters['coordination_algo'])
-        self.maxplus = maxplus(regular_factor=self._parameters['factored_agents'], agent_neighbour_combo=self._parameters['agent_neighbour_combo'], max_iter=30)
+        #self.maxplus = maxplus(regular_factor=self._parameters['factored_agents'], agent_neighbour_combo=self._parameters['agent_neighbour_combo'], max_iter=30)
         if self._parameters['coordination_algo'] == 'maxplus':
             self.maxplus = maxplus(regular_factor=self._parameters['factored_agents'], agent_neighbour_combo=self._parameters['agent_neighbour_combo'], max_iter=self._parameters['max_iter'])
             print('USING MAXPLUS ALGORITHM FOR COORDINATION')
@@ -53,12 +53,12 @@ class experimentor():
         self.algo_timer = []
         self.fileinitialiser()
         self.factored_agent_type = self._parameters['factored_agent_type']
-        #self.result_appender('results/four_intersection/0.4/brute')
+        #self.result_appender('results/six_intersection/0.4/maxplus/trial/150000')
 
 
     def tester(self):
         path = os.getcwd()
-        #self.modelnumber=10000
+        self.modelnumber=None
         if self.modelnumber ==None:
             self.model = '0'
             '''if self.index == 'individual':
@@ -104,7 +104,7 @@ class experimentor():
                 self.test()
 
         else:
-            for self.model in range(self.modelnumber, 1100000, 10000):
+            for self.model in range(self.modelnumber, 250000, 10000):
                 self.env.reset_test_cntr()
 
                 if self.index == 'individual':
@@ -188,7 +188,7 @@ class experimentor():
     def saver(self, data, name, iternumber):
         path = os.getcwd()
         filename = str(name) + str(iternumber) + '.csv'
-        pathname = os.path.join(*[path, 'results', self._parameters['scene'], str(self._parameters['car_pr']), self._parameters['coordination_algo'], filename])
+        pathname = os.path.join(*[path, 'results', self._parameters['scene'], str(self._parameters['car_pr']), self._parameters['coordination_algo'], 'trial', 'zeroiter',filename])
         #pathname = os.path.join(*[path, 'results', 'qvalues'])
         outfile = open(pathname, 'w')
         writer = csv.writer(outfile)
@@ -199,7 +199,7 @@ class experimentor():
         path = os.getcwd()
         for key in self.test_result.keys():
             filename = key + '.csv'
-            pathname = os.path.join(*[path, 'results', self._parameters['scene'], str(self._parameters['car_pr']), self._parameters['coordination_algo'], filename])
+            pathname = os.path.join(*[path, 'results', self._parameters['scene'], str(self._parameters['car_pr']), self._parameters['coordination_algo'], 'trial', 'zeroiter', filename])
             #pathname = os.path.join(*[path, 'results', 'qvalues'])
             #pathname = os.path.join(path, filename)
             if os.path.exists(os.path.dirname(pathname)):
@@ -230,26 +230,26 @@ class experimentor():
     def take_action(self, state_graph):
         q_arr = self.factor_graph.get_factored_Q_val(state_graph)
         if self._parameters['coordination_algo'] == 'brute':
-            self.i+=1
-            if self.i==50:
-                pdb.set_trace()
+            '''self.i+=1
+            if self.i%100==0:
+                pdb.set_trace()'''
             start = time.process_time()
             sum_q_value, best_action, sumo_act = self.factor_graph.b_coord(q_arr)
-            self.maxplus.initialise_again()
-            q_arr = self.qarr_key_changer(q_arr)
-            start = time.process_time()
-            sumo_act, action_payoff_tup, diff, std = self.maxplus.max_plus_calculator(q_arr)
-            #self.bc_qval.append(sum_q_value)
-            print('BC:    ', sum_q_value, sumo_act)
-            print('MP:    ', action_payoff_tup,  sumo_act)
             self.algo_timer.append(time.process_time() - start)
+            print(sum_q_value, sumo_act)
         elif self._parameters['coordination_algo'] == 'maxplus':
+            '''self.i+=1
+            if self.i%100 ==0:
+                pdb.set_trace()'''
             self.maxplus.initialise_again()
+            #sum_q_value, best_action, sumo_act = self.factor_graph.b_coord(q_arr)
+            #print('BC: ', sum_q_value, sumo_act)
             q_arr = self.qarr_key_changer(q_arr)
             start = time.process_time()
-            sumo_act, action_payoff_tup = self.maxplus.max_plus_calculator(q_arr)
+            payoff, sumo_act = self.maxplus.max_plus_calculator(q_arr)
+            #print(action_payoff_tup, sumo_act)
             #self.mp_qval.append(action_payoff_tup[-1][0])
-            #print('BC: ', sum_q_value, '\nMP: ', action_payoff_tup[-1][0])
+            #print('MP: ', payoff, sumo_act)
             self.algo_timer.append(time.process_time() - start)
         else:
             start = time.process_time()
@@ -395,8 +395,8 @@ class experimentor():
             #ob = self.four_padder(ob)
             #ob = self.three_padder(ob)
             #ob = self.six_ind_padder(ob)
-            ob = self.six_padder(ob)
-            #ob = self.eight_padder(ob)
+            #ob = self.six_padder(ob)
+            ob = self.eight_padder(ob)
             self.ob_dict, self.stacked_state_dict = self.stacked_graph(ob=ob[0], initial=True)
             self.reset()
             while not done:
@@ -405,15 +405,15 @@ class experimentor():
                 #ob_ = self.four_padder(ob_)
                 #ob_ = self.three_padder(ob_)
                 #ob_ = self.six_ind_padder(ob_)
-                ob_ = self.six_padder(ob_)
-                #ob_ = self.eight_padder(ob_)
+                #ob_ = self.six_padder(ob_)
+                ob_ = self.eight_padder(ob_)
                 print(reward[1]['result'])
                 self.store_result(reward[1])
                 self.ob_dict, self.stacked_state_dict  = self.stacked_graph(ob_[0], initial=False)
         ob, avg_travel_times, avg_travel_time = self.env.reset(i)
         self.store_tt(avg_travel_time)
         self.save(self.test_result, self.model)
-        self.saver(self.algo_timer, 'algo_timer',self.model)
+        #self.saver(self.algo_timer, 'algo_timer',self.model)
         #self.saver(data=self.bc_qval, name='High_BC_QVAL' , iternumber=self.model)
         #self.saver(data=self.mp_qval, name='High_MP_QVAL' , iternumber=self.model)
 
