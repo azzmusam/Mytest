@@ -10,6 +10,7 @@ import random
 import collections
 import csv
 import timeit
+import time
 
 class maxplus():
 
@@ -49,6 +50,7 @@ class maxplus():
         # sen_msg_bool is to determine the fixed point has arrived yet or not.
         self.sen_msg = {}
         self.difference_dict = {}
+        self.action_payoff= {}
         self.sent_and_received = {}
         for keys in self.factored_agent.keys():
             self.sen_msg[keys] = {}
@@ -327,11 +329,9 @@ class maxplus():
     def max_plus_calculator(self, q_val):
         #agent_schedule = self.random_agent_selector()  #[1, 3, 0, 2] #self.random_agent_selector()
         #agent_schedule = [3,1,2,4,5,0]
-        fixed_point = False
-        best_action_so_far = []
+        #fixed_point = False
         for i in range(self.max_iter):
             self.initialise_sent_dict()
-            #agent_schedule = [3,1,2,4,5,0]
             agent_schedule = self.random_agent_selector()
             for val in agent_schedule:
                 agent_neighbour = self.connected_nodes(val)
@@ -347,7 +347,6 @@ class maxplus():
                     if self.checker(val, neighbour)==False:
                         pass
                     else:
-                        pdb.set_trace()
                         continue
                     message_dict = self.msg_last_action_dict(val, left_neighbour)
                     #print("Received incoming message from left neighbours: ", message_dict) 
@@ -355,14 +354,22 @@ class maxplus():
                     self.sent_and_received[val][neighbour]= True
                 self.payoff_update(val)
             glo_pay, joint_action = self.global_payoff_cal(q_val)
-            self.action_payoff_tup.append(tuple((glo_pay, joint_action)))
+            if i ==0:
+                self.action_payoff['payoff'] = glo_pay
+                self.action_payoff['action'] = joint_action
+            else:
+                if glo_pay > self.action_payoff['payoff']:
+                    self.action_payoff['payoff'] = glo_pay
+                    self.action_payoff['action'] = joint_action
+            #self.action_payoff_tup.append(tuple((glo_pay, joint_action)))
         #self.lstprinter()
-        diff, std = self.difference_dict_print()
+        #diff, std = self.difference_dict_print()
         #print(self.sen_msg)
         #print(self.action_payoff_tup)
-        payoff, action  = self.final_action()
+        #payoff, action  = self.final_action()
         #print(payoff, action)
-        return self.action_payoff_tup_to_sumo_action(action), payoff, diff, std
+        return self.action_payoff['payoff'], self.action_payoff_tup_to_sumo_action(self.action_payoff['action'])
+        
 
 
     def lstprinter(self):
@@ -395,10 +402,11 @@ if __name__=="__main__":
                             2: [1, 5],
                             3: [0, 4],
                             4: [1, 3, 5],
-                            5: [2, 4]}'''
+                            5: [2, 4]}
 
 
-    agent_neighbour_combo= {0: [1,4],
+    '''
+    '''agent_neighbour_combo= {0: [1,4],
                             1: [0, 2, 5],
                             2: [1, 3, 6],
                             3: [2, 7],
@@ -416,25 +424,25 @@ if __name__=="__main__":
                       "6": [0, 4],
                       "7": [1, 5],
                       "8": [2, 6],
-                      "9": [3, 7]}
+                      "9": [3, 7]}'''
 
 
     '''agent_neighbour_combo = {0: [1],
                              1: [0,2],
                              2: [1]}
     '''
-    '''
+    
     agent_neighbour_combo= {0: [1, 2],
                             1: [0, 3],
                             2: [0, 3],
-                            3: [1, 2]}'''
+                            3: [1, 2]}
    
-    '''regular_factor = {"0": [0, 1],
+    regular_factor = {"0": [0, 1],
                       "1": [2, 3],
                       "2": [0, 2],
                       "3": [1, 3]}
  
-    q_val = {'[0, 1]': np.array([[0.5488135 , 0.71518937, 0.60276338, 0.54488318]]), '[2, 3]': np.array([[0.4236548 , 0.64589411, 0.43758721, 0.891773  ]]), '[0, 2]': np.array([[0.96366276, 0.38344152, 0.79172504, 0.52889492]]), '[1, 3]': np.array([[0.56804456, 0.92559664, 0.07103606, 0.0871293 ]])}'''
+    q_val = {'[0, 1]': np.array([[0.5488135 , 0.71518937, 0.60276338, 0.54488318]]), '[2, 3]': np.array([[0.4236548 , 0.64589411, 0.43758721, 0.891773  ]]), '[0, 2]': np.array([[0.96366276, 0.38344152, 0.79172504, 0.52889492]]), '[1, 3]': np.array([[0.56804456, 0.92559664, 0.07103606, 0.0871293 ]])}
 
     '''regular_factor = {"0": [0, 1],
                       "1": [1, 2],
@@ -442,7 +450,7 @@ if __name__=="__main__":
                       "3": [4, 5],
                       "4": [0, 3],
                       "5": [1, 4],
-                      "6": [2, 5]} '''	
+                      "6": [2, 5]}'''	
 
     
 
@@ -453,10 +461,11 @@ if __name__=="__main__":
    
     '''
     
-    '''q_val = {'[0, 1]': np.array([[0.5488135 , 0.71518937, 0.60276338, 0.54488318]]), '[1, 2]': np.array([[0.4236548 , 0.64589411, 0.43758721, 0.891773  ]]), '[3, 4]': np.array([[0.96366276, 0.38344152, 0.79172504, 0.52889492]]), '[4, 5]': np.array([[0.56804456, 0.92559664, 0.07103606, 0.0871293 ]]), '[0, 3]': np.array([[0.0202184 , 0.83261985, 0.77815675, 0.87001215]]), '[1, 4]': np.array([[0.97861834, 0.79915856, 0.46147936, 0.78052918]]), '[2, 5]': np.array([[0.11827443, 0.63992102, 0.14335329, 0.94466892]])}'''
+    '''q_val = {'[0, 1]': np.array([[0.5488135 , 0.71518937, 0.60276338, 0.54488318]]), '[1, 2]': np.array([[0.4236548 , 0.64589411, 0.43758721, 0.891773  ]]), '[3, 4]': np.array([[0.96366276, 0.38344152, 0.79172504, 0.52889492]]), '[4, 5]': np.array([[0.56804456, 0.92559664, 0.07103606, 0.0871293 ]]), '[0, 3]': np.array([[0.0202184 , 0.83261985, 0.77815675, 0.87001215]]), '[1, 4]': np.array([[0.97861834, 0.79915856, 0.46147936, 0.78052918]]), '[2, 5]': np.array([[0.11827443, 0.63992102, 0.14335329, 0.94466892]])}
 
 
-    q_val = {'[0, 1]': np.array([[0.5488135 , 0.71518937, 0.60276338, 0.54488318]]), '[1, 2]': np.array([[0.4236548 , 0.64589411, 0.43758721, 0.891773  ]]), '[2, 3]': np.array([[0.96366276, 0.38344152, 0.79172504, 0.52889492]]), '[4, 5]': np.array([[0.56804456, 0.92559664, 0.07103606, 0.0871293 ]]), '[5, 6]': np.array([[0.0202184 , 0.83261985, 0.77815675, 0.87001215]]), '[6, 7]': np.array([[0.97861834, 0.79915856, 0.46147936, 0.78052918]]), '[0, 4]': np.array([[0.11827443, 0.63992102, 0.14335329, 0.94466892]]), '[1, 5]': np.array([[0.64589411, 0.96366276, 0.87001215, 0.07103606]]), '[2, 6]': np.array([[0.71518937, 0.56804456, 0.83261985, 0.07103606]]),'[3, 7]': np.array([[0.46147936, 0.14335329, 0.92559664, 0.5488135]])}
+    '''
+    '''q_val = {'[0, 1]': np.array([[0.5488135 , 0.71518937, 0.60276338, 0.54488318]]), '[1, 2]': np.array([[0.4236548 , 0.64589411, 0.43758721, 0.891773  ]]), '[2, 3]': np.array([[0.96366276, 0.38344152, 0.79172504, 0.52889492]]), '[4, 5]': np.array([[0.56804456, 0.92559664, 0.07103606, 0.0871293 ]]), '[5, 6]': np.array([[0.0202184 , 0.83261985, 0.77815675, 0.87001215]]), '[6, 7]': np.array([[0.97861834, 0.79915856, 0.46147936, 0.78052918]]), '[0, 4]': np.array([[0.11827443, 0.63992102, 0.14335329, 0.94466892]]), '[1, 5]': np.array([[0.64589411, 0.96366276, 0.87001215, 0.07103606]]), '[2, 6]': np.array([[0.71518937, 0.56804456, 0.83261985, 0.07103606]]),'[3, 7]': np.array([[0.46147936, 0.14335329, 0.92559664, 0.5488135]])}'''
 
 
     ''' q_val_combination = []
@@ -479,23 +488,32 @@ if __name__=="__main__":
         writer.writerows(map(lambda x:[x], data))
         outfile.close()
 
+    def action_payoff_tup_to_sumo_action(action_pay_tup):
+        action = action_pay_tup
+        sumo_act = collections.OrderedDict()
+        for keys in action.keys():
+            sumo_act[str(keys)] = int(action[keys])
+        return sumo_act
+
+
+
     #q_val = {'[0, 1]': np.array([[0.5488135 , 0.71518937, 0.60276338, 0.54488318]]), '[1, 2]': np.array([[0.4236548 , 0.64589411, 0.43758721, 0.891773  ]])}
     import time
-    mp = maxplus(regular_factor, agent_neighbour_combo, 3)
+    mp = maxplus(regular_factor, agent_neighbour_combo, 30)
     time_list = []
     diff_list = []
     std_list = []
     #message_dict = mp.msg_last_action_dict(1, [2,3])
-    for i in range(10000):
+    for i in range(5000):
         mp.initialise_again()
-        start = time.process_time()
-        action, payoff, diff, std = mp.max_plus_calculator(q_val)
-        time_list.append(time.process_time()-start)
-        diff_list.append(diff)
-        std_list.append(std)
-    saver(time_list, 'eight_int_time_threeiter', 10000)
-    saver(diff_list, 'eight_int_diff_threeiter', 10000)
-    saver(std_list, 'eight_int_std_threeiter', 10000)
+        start = time.perf_counter() 
+        mp.max_plus_calculator(q_val)
+        time_list.append(time.perf_counter() -start)
+        #diff_list.append(mean)
+        #std_list.append(std)
+    saver(time_list, '4_perf_counter_final', 5000)
+    #saver(diff_list, 'subfinal_four_int_time_30iter', 1000)
+    #saver(std_list, 'sub_final_four_int_std_30iter', 100)
 
     
     #print(mp.intsum_incoming_messges(1))

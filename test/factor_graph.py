@@ -10,7 +10,7 @@ import tensorflow as tf
 
 class factor_graph():
    
-    def __init__(self, factored_graph, num_agents):#, parameters, car_pr, factored_agent_type, modelnr, algorithm):
+    def __init__(self, factored_graph, num_agents, parameters, car_pr, factored_agent_type, modelnr, algorithm):
         self.factored_graph = factored_graph
         self.num_agents = num_agents
         self._parameters = parameters
@@ -128,6 +128,7 @@ class factor_graph():
 
     def b_coord(self, q_array):
         sum_q_value = []
+        #self.index='vertical'
         #Considering the fact that the factored q value comprises only of two agents
         if self.index == 'vertical':
             action_tuple = [i for i in it.product((0,1), repeat=2)]
@@ -166,10 +167,10 @@ class factor_graph():
 if __name__=="__main__":
     import numpy as np
     import csv
-    '''factored_agents= {"0": [0, 1],
+    factored_agents= {"0": [0, 1],
                       "1": [2, 3],
                       "2": [0, 2],
-                      "3": [1, 3]}'''
+                      "3": [1, 3]}
     
     def saver(data, name, iternumber):
         path = os.getcwd()
@@ -183,7 +184,7 @@ if __name__=="__main__":
 
 
     #fg = factor_graph(factored_agents, 6)
-    #q_val = {'0': np.array([[0.5488135 , 0.71518937, 0.60276338, 0.54488318]]), '1': np.array([[0.4236548 , 0.64589411, 0.43758721, 0.891773  ]]), '2': np.array([[0.96366276, 0.38344152, 0.79172504, 0.52889492]]), '3': np.array([[0.56804456, 0.92559664, 0.07103606, 0.0871293 ]])}
+    q_val = {'0': np.array([[0.5488135 , 0.71518937, 0.60276338, 0.54488318]]), '1': np.array([[0.4236548 , 0.64589411, 0.43758721, 0.891773  ]]), '2': np.array([[0.96366276, 0.38344152, 0.79172504, 0.52889492]]), '3': np.array([[0.56804456, 0.92559664, 0.07103606, 0.0871293 ]])}
 
 
     '''factored_agents= {"0": [0, 1],
@@ -197,7 +198,7 @@ if __name__=="__main__":
     q_val = {'0': np.array([[0.5488135 , 0.71518937, 0.60276338, 0.54488318]]), '1': np.array([[0.4236548 , 0.64589411, 0.43758721, 0.891773  ]]), '2': np.array([[0.96366276, 0.38344152, 0.79172504, 0.52889492]]), '3': np.array([[0.56804456, 0.92559664, 0.07103606, 0.0871293 ]]), '4': np.array([[0.0202184 , 0.83261985, 0.77815675, 0.87001215]]), '5': np.array([[0.97861834, 0.79915856, 0.46147936, 0.78052918]]), '6': np.array([[0.11827443, 0.63992102, 0.14335329, 0.94466892]])}'''
 
 
-    factored_agents= {"0": [0, 1],
+    '''factored_agents= {"0": [0, 1],
                       "1": [1, 2],
                       "2": [2, 3],
                       "3": [4, 5],
@@ -209,14 +210,14 @@ if __name__=="__main__":
                       "9": [3, 7]}
 
     q_val = {'0': np.array([[0.5488135 , 0.71518937, 0.60276338, 0.54488318]]), '1': np.array([[0.4236548 , 0.64589411, 0.43758721, 0.891773  ]]), '2': np.array([[0.96366276, 0.38344152, 0.79172504, 0.52889492]]), '3': np.array([[0.56804456, 0.92559664, 0.07103606, 0.0871293 ]]), '4': np.array([[0.0202184 , 0.83261985, 0.77815675, 0.87001215]]), '5': np.array([[0.97861834, 0.79915856, 0.46147936, 0.78052918]]), '6': np.array([[0.11827443, 0.63992102, 0.14335329, 0.94466892]]), '7': np.array([[0.64589411, 0.96366276, 0.87001215, 0.07103606]]), '8': np.array([[0.71518937, 0.56804456, 0.83261985, 0.07103606]]),'9': np.array([[0.46147936, 0.14335329, 0.92559664, 0.5488135]])}
-
-    fg = factor_graph(factored_agents, 8)
+'''
+    fg = factor_graph(factored_agents, 4)
 
     time_list = []
     for i in range(10000):
-        start = time.process_time()
+        start = time.perf_counter() 
         q_value, best_action, act = fg.b_coord(q_val)
-        time_list.append(time.process_time() - start)
+        time_list.append(time.perf_counter()  - start)
 
-    saver(time_list, 'eight_time_', 10000)
-        #print(q_value, best_action, act)
+    saver(time_list, 'four_perf_counter_', 10000)
+        #print(q_value,o best_action, act)
