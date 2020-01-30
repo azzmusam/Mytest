@@ -14,9 +14,9 @@ class DeepQNetwork(object):
         self.lr = lr
         self.name = name
         config = tf.ConfigProto()
-        config.gpu_options.visible_device_list = "3"
+        config.gpu_options.visible_device_list = "0,3"
         #config.gpu_options.allow_growth = True
-        #config.gpu_options.per_process_gpu_memory_fraction = 0.4
+        #config.gpu_options.per_process_gpu_memory_fraction = 0.3
         self.LSTM_DIM = LSTM_DIM
         self.n_actions = n_actions
         self.fc1_dims = fc1_dims
